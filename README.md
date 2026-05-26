@@ -4,7 +4,14 @@ Waybar widget and tabbed TUI for AI plan usage across **Anthropic Claude**, **Op
 
 This started as a Rust port of [`claudebar`](https://github.com/mryll/claudebar) and stays drop-in compatible with it. It keeps the minimalist Pango-bordered tooltip, Omarchy theme auto-detection, and flock-protected OAuth refresh, then adds three more vendors and a proper testable codebase instead of one long shell script.
 
+**WAYLAND**
+
 ![Waybar widget showing `cld 29% · 1h 12m` in the top-right, with the hover tooltip showing Claude Max 20x session/weekly/sonnet/extra-usage progress bars](screenshot.png)
+
+
+**GNOME (UBUNTU)**
+
+![GNOME widget showing `cld 29% · 1h 12m` in the top-right, with the click-to-open native popup showing Claude Max 20x session/weekly/sonnet/extra-usage progress bars](screenshot_gnome.png)
 
 ## Features
 
@@ -213,30 +220,30 @@ Then `hyprctl reload` (no logout needed).
 
 ## GNOME (Ubuntu, Fedora, …)
 
-GNOME Shell's top bar cannot render Waybar-style hover tooltips with Pango markup — no maintained extension provides that on GNOME 45+. The closest options on stock GNOME are a small custom Shell extension (this section) that shows the colored bar text and opens a Pango-rendered tooltip popup on click, or a keyboard shortcut that spawns the TUI in a floating terminal.
+GNOME Shell's top bar can't render Waybar-style hover tooltips with Pango markup, so this section provides a small custom Shell extension that shows the colored bar text in the panel and opens a **native popup** with progress-bar widgets when clicked. The popup is built from real St widgets (not Pango ASCII art), so the layout stays clean across fonts, sizes, and GNOME versions. As an alternative, you can skip the extension entirely and bind a keyboard shortcut to spawn the TUI in a floating terminal.
 
 ### Custom GNOME Shell extension
 
 Tested on GNOME 45–50 (Ubuntu 24.04 / 24.10 / 25.04 / 26.04).
 
-Drop the three files below into `~/.local/share/gnome-shell/extensions/ai-usagebar@local/`, install JetBrainsMono Nerd Font so the tooltip's box-drawing characters and icon glyphs align (same font width for every character), log out and log back in (Wayland can't reload Shell extensions live), then enable it:
+Drop the three files below into `~/.local/share/gnome-shell/extensions/ai-usagebar@local/`, log out and log back in (Wayland can't reload Shell extensions live), then enable it:
 
 ```bash
-mkdir -p ~/.local/share/gnome-shell/extensions/ai-usagebar@local ~/.local/share/fonts
+mkdir -p ~/.local/share/gnome-shell/extensions/ai-usagebar@local
 # … write the three files below into the extension dir …
-
-# Tooltip needs a full Nerd Font (not symbols-only) so box-drawing and icons
-# share one glyph-width metric and the right-edge ‘│’ stays aligned:
-curl -sL https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip \
-  -o /tmp/jbm-nerd.zip
-unzip -qo /tmp/jbm-nerd.zip -d ~/.local/share/fonts/JetBrainsMono-Nerd-Font
-fc-cache -f
 
 # Log out and back in (Wayland requirement), then:
 gnome-extensions enable ai-usagebar@local
 ```
 
-After install, click the new top-bar item to open the popup. Use the menu items to refresh, cycle the active vendor, or open the full TUI.
+After install, click the new top-bar item to open the popup. It shows:
+
+- A bold, colored **title** with the active plan (e.g. `Max 5x`, `ChatGPT Plus`, `GLM Coding Lite`, `OpenRouter`).
+- Per-window rows with a **progress bar widget**, the percentage colored by severity (green / yellow / orange / red), and a `Resets in …` sub-line where applicable.
+- An **`Updated HH:MM`** footer in your local timezone (uses `GLib.DateTime.new_now_local()` so it honors `/etc/localtime` instead of GJS's UTC `Date`).
+- Clickable menu items to refresh, cycle the active vendor (`cld` → `gpt` → `zai` → `opr`), or open the full TUI.
+
+The popup layout adapts per vendor — Session/Weekly/Sonnet/Extra-usage for Anthropic, Codex 5h/weekly + Credits for OpenAI, Session/Weekly/MCP for Z.AI, and Balance/Today/Week/Month for OpenRouter.
 
 <details>
 <summary><strong>metadata.json</strong></summary>
@@ -245,7 +252,7 @@ After install, click the new top-bar item to open the popup. Use the menu items 
 {
   "uuid": "ai-usagebar@local",
   "name": "AI Usagebar",
-  "description": "Top-bar indicator showing ai-usagebar plan usage. Click for the Pango tooltip popup.",
+  "description": "Top-bar indicator showing ai-usagebar plan usage. Click for a native popup with per-window progress bars across Anthropic / OpenAI / Z.AI / OpenRouter.",
   "shell-version": ["45", "46", "47", "48", "49", "50"],
   "url": "https://github.com/akitaonrails/ai-usagebar"
 }
@@ -258,8 +265,8 @@ After install, click the new top-bar item to open the popup. Use the menu items 
 
 ```js
 // AI Usagebar GNOME Shell extension.
-// Renders ai-usagebar's bar text in the top panel and its full Pango tooltip
-// (bordered box with session/weekly progress) in a click-to-open popup.
+// Top-bar indicator with a native widget popup showing per-window usage
+// for the active vendor (Anthropic / OpenAI / Z.AI / OpenRouter).
 
 import GObject from 'gi://GObject';
 import St from 'gi://St';
@@ -277,11 +284,6 @@ const AI_USAGEBAR =
 const AI_USAGEBAR_TUI =
     GLib.find_program_in_path('ai-usagebar-tui') ?? `${HOME}/.local/bin/ai-usagebar-tui`;
 
-// Customize for your terminal emulator. Examples:
-//   Ptyxis (GNOME 25.04+):  [ptyxis, '--new-window', '-T', 'AI Usage', '--', AI_USAGEBAR_TUI]
-//   GNOME Terminal:         [gnome-terminal, '--title=AI Usage', '--', AI_USAGEBAR_TUI]
-//   GNOME Console (kgx):    [kgx, '-e', AI_USAGEBAR_TUI]
-//   Kitty / Alacritty:      [kitty, '--title=AI Usage', AI_USAGEBAR_TUI]
 const TUI_SPAWN_ARGV = [
     GLib.find_program_in_path('ptyxis')
         ?? GLib.find_program_in_path('kgx')
@@ -290,8 +292,132 @@ const TUI_SPAWN_ARGV = [
     '--new-window', '-T', 'AI Usage', '--', AI_USAGEBAR_TUI,
 ];
 
-const FORMAT = '{vendor_short} {session_pct}% · {session_reset}';
+const BAR_FORMAT = '{vendor_short} {session_pct}% · {session_reset}';
+// Combined structured data — empty fields are normal for non-active vendors.
+const POPUP_FORMAT = [
+    '{vendor_short}', '{plan}',
+    // Anthropic
+    '{session_pct}', '{session_reset}', '{session_pace_indicator}',
+    '{weekly_pct}', '{weekly_reset}', '{weekly_pace_indicator}',
+    '{sonnet_pct}', '{sonnet_reset}',
+    '{extra_spent}', '{extra_limit}', '{extra_pct}',
+    // OpenAI
+    '{oai_plan}', '{oai_session_pct}', '{oai_session_reset}',
+    '{oai_weekly_pct}', '{oai_weekly_reset}',
+    '{oai_code_review_pct}', '{oai_credit_balance}',
+    // Z.AI
+    '{zai_plan}', '{zai_session_pct}', '{zai_session_reset}',
+    '{zai_weekly_pct}', '{zai_weekly_reset}',
+    '{zai_mcp_pct}', '{zai_mcp_reset}',
+    // OpenRouter
+    '{or_label}', '{or_balance}', '{or_total}',
+    '{or_used_today}', '{or_used_week}', '{or_used_month}',
+].join('|');
+
 const REFRESH_SECONDS = 300;
+
+// One Dark palette — matches ai-usagebar's TUI/Waybar tooltip colors.
+const COLOR_LOW = '#98c379';
+const COLOR_MID = '#e5c07b';
+const COLOR_HIGH = '#d19a66';
+const COLOR_CRITICAL = '#e06c75';
+const COLOR_TITLE = '#61afef';
+
+function colorForPct(pct) {
+    if (pct < 50) return COLOR_LOW;
+    if (pct < 80) return COLOR_MID;
+    if (pct < 95) return COLOR_HIGH;
+    return COLOR_CRITICAL;
+}
+
+const BAR_PX = 280;
+const BAR_HEIGHT = 8;
+
+function makeRow() {
+    const item = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+    item.add_style_class_name('ai-usagebar-row');
+
+    const col = new St.BoxLayout({
+        vertical: true,
+        x_expand: true,
+        style_class: 'ai-usagebar-row-col',
+    });
+
+    const header = new St.BoxLayout({ x_expand: true });
+    const nameLabel = new St.Label({
+        x_expand: true,
+        y_align: Clutter.ActorAlign.CENTER,
+        style_class: 'ai-usagebar-row-name',
+    });
+    const pctLabel = new St.Label({
+        x_expand: false,
+        y_align: Clutter.ActorAlign.CENTER,
+        style_class: 'ai-usagebar-row-pct',
+    });
+    header.add_child(nameLabel);
+    header.add_child(pctLabel);
+    col.add_child(header);
+
+    // Progress bar container — explicit Clutter sizing + CSS min-* for safety.
+    const barContainer = new St.BoxLayout({
+        x_expand: false,
+        x_align: Clutter.ActorAlign.START,
+        style_class: 'ai-usagebar-bar-container',
+    });
+    barContainer.set_size(BAR_PX, BAR_HEIGHT);
+    const filled = new St.Widget({
+        style_class: 'ai-usagebar-bar-filled',
+    });
+    filled.set_height(BAR_HEIGHT);
+    barContainer.add_child(filled);
+    col.add_child(barContainer);
+
+    const subLabel = new St.Label({
+        style_class: 'ai-usagebar-row-sub',
+    });
+    col.add_child(subLabel);
+
+    item.add_child(col);
+    return { item, nameLabel, pctLabel, filled, barContainer, subLabel };
+}
+
+function updateRowPct(row, { name, pct, sub, pace }) {
+    row.item.visible = true;
+    row.nameLabel.set_text(name);
+
+    const safePct = Number.isFinite(pct) ? pct : 0;
+    const color = colorForPct(safePct);
+    const pctText = pace ? `${safePct}% ${pace}` : `${safePct}%`;
+    row.pctLabel.set_text(pctText);
+    row.pctLabel.set_style(`color: ${color};`);
+
+    const filledPx = Math.round((Math.max(0, Math.min(100, safePct)) / 100) * BAR_PX);
+    row.filled.set_width(filledPx);
+    row.filled.set_style(`background-color: ${color}; border-radius: 3px;`);
+    row.barContainer.visible = true;
+
+    if (sub) {
+        row.subLabel.set_text(sub);
+        row.subLabel.visible = true;
+    } else {
+        row.subLabel.visible = false;
+    }
+}
+
+function updateRowValue(row, { name, value, color }) {
+    // For non-percentage rows (credits, balance, dollar amounts).
+    row.item.visible = true;
+    row.nameLabel.set_text(name);
+    row.pctLabel.set_text(value);
+    row.pctLabel.set_style(`color: ${color || COLOR_TITLE};`);
+    row.barContainer.visible = false;
+    row.subLabel.visible = false;
+}
+
+function parseIntOrNull(s) {
+    const n = parseInt(s, 10);
+    return Number.isFinite(n) ? n : null;
+}
 
 const Indicator = GObject.registerClass(
 class Indicator extends PanelMenu.Button {
@@ -305,19 +431,36 @@ class Indicator extends PanelMenu.Button {
         this._label.clutter_text.set_use_markup(true);
         this.add_child(this._label);
 
-        const tooltipItem = new PopupMenu.PopupBaseMenuItem({
-            reactive: false,
-            can_focus: false,
-            style_class: 'ai-usagebar-popup-item',
-        });
-        this._tooltipLabel = new St.Label({
+        // Title (plan name) — bold, centered, colored.
+        this._titleLabel = new St.Label({
             text: 'Loading…',
-            style_class: 'ai-usagebar-tooltip',
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
         });
-        this._tooltipLabel.clutter_text.set_use_markup(true);
-        this._tooltipLabel.clutter_text.line_wrap = false;
-        tooltipItem.add_child(this._tooltipLabel);
-        this.menu.addMenuItem(tooltipItem);
+        this._titleLabel.add_style_class_name('ai-usagebar-title');
+        const titleItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        titleItem.add_style_class_name('ai-usagebar-title-item');
+        titleItem.add_child(this._titleLabel);
+        this.menu.addMenuItem(titleItem);
+
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        // Four data rows — visibility and content updated per vendor.
+        this._rows = [makeRow(), makeRow(), makeRow(), makeRow()];
+        for (const r of this._rows) this.menu.addMenuItem(r.item);
+
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        // Footer — last-updated time.
+        this._footerLabel = new St.Label({
+            text: '',
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        });
+        this._footerLabel.add_style_class_name('ai-usagebar-footer');
+        const footerItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        footerItem.add_child(this._footerLabel);
+        this.menu.addMenuItem(footerItem);
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -357,33 +500,166 @@ class Indicator extends PanelMenu.Button {
     }
 
     _refresh() {
+        this._runProc([AI_USAGEBAR, '--format', BAR_FORMAT], (data) => {
+            if (data.text) this._label.clutter_text.set_markup(data.text);
+        });
+        this._runProc([AI_USAGEBAR, '--format', POPUP_FORMAT], (data) => {
+            const plain = (data.text || '').replace(/<[^>]*>/g, '');
+            this._renderPopup(plain.split('|'));
+        });
+    }
+
+    _runProc(argv, onData) {
         let proc;
         try {
-            proc = Gio.Subprocess.new(
-                [AI_USAGEBAR, '--format', FORMAT],
-                Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE,
-            );
+            proc = Gio.Subprocess.new(argv,
+                Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
         } catch (e) {
-            this._label.set_text('ai-usagebar ⚠');
-            this._tooltipLabel.set_text(`Spawn failed: ${e.message}`);
+            console.error(`ai-usagebar: spawn failed: ${e.message}`);
             return;
         }
-
         proc.communicate_utf8_async(null, null, (p, res) => {
-            let stdout = '';
             try {
                 const [, out] = p.communicate_utf8_finish(res);
-                stdout = out;
-                const data = JSON.parse(stdout);
-                if (data.text) this._label.clutter_text.set_markup(data.text);
-                if (data.tooltip) this._tooltipLabel.clutter_text.set_markup(data.tooltip);
+                const data = JSON.parse(out);
+                onData(data);
             } catch (e) {
-                this._label.set_text('ai-usagebar ⚠');
-                this._tooltipLabel.set_text(
-                    `Error parsing output: ${e.message}\n\nRaw stdout:\n${stdout || '(empty)'}`,
-                );
+                console.error(`ai-usagebar: parse failed: ${e.message}`);
             }
         });
+    }
+
+    _renderPopup(fields) {
+        // Field order MUST match POPUP_FORMAT above.
+        const [
+            vendorShort, plan,
+            sessionPct, sessionReset, sessionPace,
+            weeklyPct, weeklyReset, weeklyPace,
+            sonnetPct, sonnetReset,
+            extraSpent, extraLimit, extraPct,
+            oaiPlan, oaiSessionPct, oaiSessionReset,
+            oaiWeeklyPct, oaiWeeklyReset,
+            oaiCodeReviewPct, oaiCreditBalance,
+            zaiPlan, zaiSessionPct, zaiSessionReset,
+            zaiWeeklyPct, zaiWeeklyReset,
+            zaiMcpPct, zaiMcpReset,
+            orLabel, orBalance, orTotal,
+            orUsedToday, orUsedWeek, orUsedMonth,
+        ] = fields;
+
+        for (const r of this._rows) r.item.visible = false;
+
+        // GLib.DateTime honors /etc/localtime — JS Date in GJS returns UTC.
+        const now = GLib.DateTime.new_now_local();
+        this._footerLabel.set_text(now.format('Updated %H:%M'));
+        this._titleLabel.set_style(`color: ${COLOR_TITLE};`);
+
+        if (vendorShort === 'cld') {
+            this._titleLabel.set_text(plan || 'Claude');
+            updateRowPct(this._rows[0], {
+                name: 'Session',
+                pct: parseIntOrNull(sessionPct) ?? 0,
+                pace: sessionPace,
+                sub: sessionReset ? `Resets in ${sessionReset}` : '',
+            });
+            updateRowPct(this._rows[1], {
+                name: 'Weekly',
+                pct: parseIntOrNull(weeklyPct) ?? 0,
+                pace: weeklyPace,
+                sub: weeklyReset ? `Resets in ${weeklyReset}` : '',
+            });
+            if (parseIntOrNull(sonnetPct) !== null) {
+                updateRowPct(this._rows[2], {
+                    name: 'Sonnet only',
+                    pct: parseIntOrNull(sonnetPct),
+                    pace: '',
+                    sub: sonnetReset ? `Resets in ${sonnetReset}` : '',
+                });
+            }
+            if (extraLimit && extraLimit !== '' && extraLimit !== '$0.00') {
+                updateRowPct(this._rows[3], {
+                    name: `Extra usage  ${extraSpent}`,
+                    pct: parseIntOrNull(extraPct) ?? 0,
+                    pace: '',
+                    sub: `Limit ${extraLimit}`,
+                });
+            }
+        } else if (vendorShort === 'gpt') {
+            this._titleLabel.set_text(oaiPlan || 'ChatGPT');
+            updateRowPct(this._rows[0], {
+                name: 'Codex 5h',
+                pct: parseIntOrNull(oaiSessionPct) ?? 0,
+                pace: '',
+                sub: oaiSessionReset ? `Resets in ${oaiSessionReset}` : '',
+            });
+            updateRowPct(this._rows[1], {
+                name: 'Codex weekly',
+                pct: parseIntOrNull(oaiWeeklyPct) ?? 0,
+                pace: '',
+                sub: oaiWeeklyReset ? `Resets in ${oaiWeeklyReset}` : '',
+            });
+            if (parseIntOrNull(oaiCodeReviewPct) !== null) {
+                updateRowPct(this._rows[2], {
+                    name: 'Code review weekly',
+                    pct: parseIntOrNull(oaiCodeReviewPct),
+                    pace: '',
+                    sub: '',
+                });
+            }
+            if (oaiCreditBalance) {
+                updateRowValue(this._rows[3], {
+                    name: 'Credits',
+                    value: oaiCreditBalance,
+                    color: COLOR_LOW,
+                });
+            }
+        } else if (vendorShort === 'zai') {
+            this._titleLabel.set_text(zaiPlan || 'GLM');
+            updateRowPct(this._rows[0], {
+                name: 'Session',
+                pct: parseIntOrNull(zaiSessionPct) ?? 0,
+                pace: '',
+                sub: zaiSessionReset ? `Resets in ${zaiSessionReset}` : '',
+            });
+            updateRowPct(this._rows[1], {
+                name: 'Weekly',
+                pct: parseIntOrNull(zaiWeeklyPct) ?? 0,
+                pace: '',
+                sub: zaiWeeklyReset ? `Resets in ${zaiWeeklyReset}` : '',
+            });
+            if (parseIntOrNull(zaiMcpPct) !== null) {
+                updateRowPct(this._rows[2], {
+                    name: 'MCP tools',
+                    pct: parseIntOrNull(zaiMcpPct),
+                    pace: '',
+                    sub: zaiMcpReset ? `Resets in ${zaiMcpReset}` : '',
+                });
+            }
+        } else if (vendorShort === 'opr') {
+            this._titleLabel.set_text(orLabel || 'OpenRouter');
+            updateRowValue(this._rows[0], {
+                name: 'Balance',
+                value: orTotal ? `${orBalance} / ${orTotal}` : (orBalance || '—'),
+                color: COLOR_LOW,
+            });
+            const usage = [
+                ['Today', orUsedToday],
+                ['This week', orUsedWeek],
+                ['This month', orUsedMonth],
+            ];
+            for (let i = 0; i < usage.length; i++) {
+                if (usage[i][1]) {
+                    updateRowValue(this._rows[i + 1], {
+                        name: usage[i][0],
+                        value: usage[i][1],
+                        color: COLOR_TITLE,
+                    });
+                }
+            }
+        } else {
+            this._titleLabel.set_text('AI Usagebar');
+            this._footerLabel.set_text('No active vendor data');
+        }
     }
 
     destroy() {
@@ -414,26 +690,73 @@ export default class AIUsagebarExtension extends Extension {
 <summary><strong>stylesheet.css</strong></summary>
 
 ```css
-.ai-usagebar-popup-item {
-    padding: 6px 10px;
+/* Title (plan name) — bold, centered. */
+.ai-usagebar-title-item {
+    padding: 10px 14px 6px 14px;
 }
 
-.ai-usagebar-tooltip {
-    font-family: 'JetBrainsMono Nerd Font',
-                 'FiraCode Nerd Font',
-                 'Hack Nerd Font',
-                 monospace;
+.ai-usagebar-title {
+    font-weight: bold;
+    font-size: 11pt;
+}
+
+/* Per-window row. Generous vertical padding so rows don't squash. */
+.ai-usagebar-row {
+    padding: 8px 14px;
+}
+
+/* Vertical column inside each row: name+pct, then bar, then sub. */
+.ai-usagebar-row-col {
+    spacing: 4px;
+}
+
+.ai-usagebar-row-name {
     font-size: 10pt;
+    color: #abb2bf;
+}
+
+.ai-usagebar-row-pct {
+    font-weight: bold;
+    font-size: 10pt;
+    padding-left: 8px;
+}
+
+/* Bar dimensions are enforced in JS via set_size()/set_width() too,
+   but we set min-* here as belt-and-braces. */
+.ai-usagebar-bar-container {
+    background-color: rgba(255, 255, 255, 0.10);
+    border-radius: 3px;
+    min-height: 8px;
+    min-width: 280px;
+}
+
+.ai-usagebar-bar-filled {
+    border-radius: 3px;
+    min-height: 8px;
+}
+
+.ai-usagebar-row-sub {
+    font-size: 9pt;
+    color: rgba(220, 220, 220, 0.55);
+    padding-top: 2px;
+}
+
+.ai-usagebar-footer {
+    font-size: 9pt;
+    color: rgba(220, 220, 220, 0.55);
+    padding: 4px 14px 8px 14px;
 }
 ```
 
 </details>
 
-After editing `extension.js` later (to change the format, refresh interval, or terminal), reload the extension without a full logout:
+After editing `extension.js` later (to change the format, refresh interval, terminal, or per-vendor layout), try the quick reload:
 
 ```bash
 gnome-extensions disable ai-usagebar@local && gnome-extensions enable ai-usagebar@local
 ```
+
+On Wayland, GNOME Shell sometimes keeps the previous JS module cached even after disable/enable — if your changes don't appear, **log out and back in**, which always reloads cleanly.
 
 ### Alternative: hotkey to TUI popup
 
