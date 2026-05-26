@@ -173,7 +173,10 @@ fn fallback_to_cache(
     last_error: Option<(u16, String)>,
 ) -> Result<FetchOutcome> {
     let Some(bytes) = cache.maybe_payload()? else {
-        return Err(AppError::Other("no usable cache".into()));
+        return Err(match last_error {
+            Some((status, body)) => AppError::Http { status, body },
+            None => AppError::Other("no usable cache".into()),
+        });
     };
     let snap = parse_payload(&bytes, plan_label)?;
     Ok(FetchOutcome {

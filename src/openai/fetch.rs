@@ -142,7 +142,10 @@ fn fallback(
     last_error: Option<(u16, String)>,
 ) -> Result<FetchOutcome> {
     let Some(bytes) = cache.maybe_payload()? else {
-        return Err(AppError::Other("openai: no usable cache".into()));
+        return Err(match last_error {
+            Some((status, body)) => AppError::Http { status, body },
+            None => AppError::Other("openai: no usable cache".into()),
+        });
     };
     let mut out = reuse(bytes, cache, true, plan_hint);
     out.last_error = last_error;

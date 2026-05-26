@@ -93,7 +93,10 @@ fn fallback_silent(cache: &Cache) -> Result<FetchOutcome> {
 
 fn fallback_with_error(cache: &Cache, last_error: Option<(u16, String)>) -> Result<FetchOutcome> {
     let Some(bytes) = cache.maybe_payload()? else {
-        return Err(AppError::Other("openrouter: no usable cache".into()));
+        return Err(match last_error {
+            Some((status, body)) => AppError::Http { status, body },
+            None => AppError::Other("openrouter: no usable cache".into()),
+        });
     };
     let mut outcome = reuse_cache(bytes, cache, true);
     outcome.last_error = last_error;
