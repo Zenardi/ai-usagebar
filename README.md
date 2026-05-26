@@ -211,6 +211,244 @@ Then `hyprctl reload` (no logout needed).
 
 > Hyprland 0.46+ uses the unified `windowrule` keyword with `match:…` filters. The older `windowrulev2 = …, class:…` syntax still works on legacy Hyprland but is deprecated — use the form above on current Omarchy / Hyprland releases.
 
+## GNOME (Ubuntu, Fedora, …)
+
+GNOME Shell's top bar cannot render Waybar-style hover tooltips with Pango markup — no maintained extension provides that on GNOME 45+. The closest options on stock GNOME are a small custom Shell extension (this section) that shows the colored bar text and opens a Pango-rendered tooltip popup on click, or a keyboard shortcut that spawns the TUI in a floating terminal.
+
+### Custom GNOME Shell extension
+
+Tested on GNOME 45–50 (Ubuntu 24.04 / 24.10 / 25.04 / 26.04).
+
+Drop the three files below into `~/.local/share/gnome-shell/extensions/ai-usagebar@local/`, install JetBrainsMono Nerd Font so the tooltip's box-drawing characters and icon glyphs align (same font width for every character), log out and log back in (Wayland can't reload Shell extensions live), then enable it:
+
+```bash
+mkdir -p ~/.local/share/gnome-shell/extensions/ai-usagebar@local ~/.local/share/fonts
+# … write the three files below into the extension dir …
+
+# Tooltip needs a full Nerd Font (not symbols-only) so box-drawing and icons
+# share one glyph-width metric and the right-edge ‘│’ stays aligned:
+curl -sL https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip \
+  -o /tmp/jbm-nerd.zip
+unzip -qo /tmp/jbm-nerd.zip -d ~/.local/share/fonts/JetBrainsMono-Nerd-Font
+fc-cache -f
+
+# Log out and back in (Wayland requirement), then:
+gnome-extensions enable ai-usagebar@local
+```
+
+After install, click the new top-bar item to open the popup. Use the menu items to refresh, cycle the active vendor, or open the full TUI.
+
+<details>
+<summary><strong>metadata.json</strong></summary>
+
+```json
+{
+  "uuid": "ai-usagebar@local",
+  "name": "AI Usagebar",
+  "description": "Top-bar indicator showing ai-usagebar plan usage. Click for the Pango tooltip popup.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "url": "https://github.com/akitaonrails/ai-usagebar"
+}
+```
+
+</details>
+
+<details>
+<summary><strong>extension.js</strong></summary>
+
+```js
+// AI Usagebar GNOME Shell extension.
+// Renders ai-usagebar's bar text in the top panel and its full Pango tooltip
+// (bordered box with session/weekly progress) in a click-to-open popup.
+
+import GObject from 'gi://GObject';
+import St from 'gi://St';
+import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+
+const HOME = GLib.get_home_dir();
+const AI_USAGEBAR =
+    GLib.find_program_in_path('ai-usagebar') ?? `${HOME}/.local/bin/ai-usagebar`;
+const AI_USAGEBAR_TUI =
+    GLib.find_program_in_path('ai-usagebar-tui') ?? `${HOME}/.local/bin/ai-usagebar-tui`;
+
+// Customize for your terminal emulator. Examples:
+//   Ptyxis (GNOME 25.04+):  [ptyxis, '--new-window', '-T', 'AI Usage', '--', AI_USAGEBAR_TUI]
+//   GNOME Terminal:         [gnome-terminal, '--title=AI Usage', '--', AI_USAGEBAR_TUI]
+//   GNOME Console (kgx):    [kgx, '-e', AI_USAGEBAR_TUI]
+//   Kitty / Alacritty:      [kitty, '--title=AI Usage', AI_USAGEBAR_TUI]
+const TUI_SPAWN_ARGV = [
+    GLib.find_program_in_path('ptyxis')
+        ?? GLib.find_program_in_path('kgx')
+        ?? GLib.find_program_in_path('gnome-terminal')
+        ?? '/usr/bin/xterm',
+    '--new-window', '-T', 'AI Usage', '--', AI_USAGEBAR_TUI,
+];
+
+const FORMAT = '{vendor_short} {session_pct}% · {session_reset}';
+const REFRESH_SECONDS = 300;
+
+const Indicator = GObject.registerClass(
+class Indicator extends PanelMenu.Button {
+    _init() {
+        super._init(0.0, 'AI Usagebar');
+
+        this._label = new St.Label({
+            text: 'ai-usagebar…',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._label.clutter_text.set_use_markup(true);
+        this.add_child(this._label);
+
+        const tooltipItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false,
+            can_focus: false,
+            style_class: 'ai-usagebar-popup-item',
+        });
+        this._tooltipLabel = new St.Label({
+            text: 'Loading…',
+            style_class: 'ai-usagebar-tooltip',
+        });
+        this._tooltipLabel.clutter_text.set_use_markup(true);
+        this._tooltipLabel.clutter_text.line_wrap = false;
+        tooltipItem.add_child(this._tooltipLabel);
+        this.menu.addMenuItem(tooltipItem);
+
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        const refresh = new PopupMenu.PopupMenuItem('Refresh now');
+        refresh.connect('activate', () => this._refresh());
+        this.menu.addMenuItem(refresh);
+
+        const cycleNext = new PopupMenu.PopupMenuItem('Cycle next vendor');
+        cycleNext.connect('activate', () => this._spawn([AI_USAGEBAR, '--cycle-next']));
+        this.menu.addMenuItem(cycleNext);
+
+        const cyclePrev = new PopupMenu.PopupMenuItem('Cycle previous vendor');
+        cyclePrev.connect('activate', () => this._spawn([AI_USAGEBAR, '--cycle-prev']));
+        this.menu.addMenuItem(cyclePrev);
+
+        const tuiItem = new PopupMenu.PopupMenuItem('Open full TUI');
+        tuiItem.connect('activate', () => this._spawn(TUI_SPAWN_ARGV));
+        this.menu.addMenuItem(tuiItem);
+
+        this._refresh();
+        this._timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, REFRESH_SECONDS, () => {
+            this._refresh();
+            return GLib.SOURCE_CONTINUE;
+        });
+
+        this.menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (isOpen) this._refresh();
+        });
+    }
+
+    _spawn(argv) {
+        try {
+            Gio.Subprocess.new(argv, Gio.SubprocessFlags.NONE);
+        } catch (e) {
+            console.error(`ai-usagebar: spawn failed: ${e.message}`);
+        }
+    }
+
+    _refresh() {
+        let proc;
+        try {
+            proc = Gio.Subprocess.new(
+                [AI_USAGEBAR, '--format', FORMAT],
+                Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE,
+            );
+        } catch (e) {
+            this._label.set_text('ai-usagebar ⚠');
+            this._tooltipLabel.set_text(`Spawn failed: ${e.message}`);
+            return;
+        }
+
+        proc.communicate_utf8_async(null, null, (p, res) => {
+            let stdout = '';
+            try {
+                const [, out] = p.communicate_utf8_finish(res);
+                stdout = out;
+                const data = JSON.parse(stdout);
+                if (data.text) this._label.clutter_text.set_markup(data.text);
+                if (data.tooltip) this._tooltipLabel.clutter_text.set_markup(data.tooltip);
+            } catch (e) {
+                this._label.set_text('ai-usagebar ⚠');
+                this._tooltipLabel.set_text(
+                    `Error parsing output: ${e.message}\n\nRaw stdout:\n${stdout || '(empty)'}`,
+                );
+            }
+        });
+    }
+
+    destroy() {
+        if (this._timer) {
+            GLib.source_remove(this._timer);
+            this._timer = null;
+        }
+        super.destroy();
+    }
+});
+
+export default class AIUsagebarExtension extends Extension {
+    enable() {
+        this._indicator = new Indicator();
+        Main.panel.addToStatusArea(this.uuid, this._indicator);
+    }
+
+    disable() {
+        this._indicator?.destroy();
+        this._indicator = null;
+    }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>stylesheet.css</strong></summary>
+
+```css
+.ai-usagebar-popup-item {
+    padding: 6px 10px;
+}
+
+.ai-usagebar-tooltip {
+    font-family: 'JetBrainsMono Nerd Font',
+                 'FiraCode Nerd Font',
+                 'Hack Nerd Font',
+                 monospace;
+    font-size: 10pt;
+}
+```
+
+</details>
+
+After editing `extension.js` later (to change the format, refresh interval, or terminal), reload the extension without a full logout:
+
+```bash
+gnome-extensions disable ai-usagebar@local && gnome-extensions enable ai-usagebar@local
+```
+
+### Alternative: hotkey to TUI popup
+
+Skip the extension entirely and bind a keyboard shortcut like `Super+U` to spawn `ai-usagebar-tui` in a floating terminal. No bar indicator, but the TUI shows all four vendors at once with live progress bars:
+
+```bash
+KEY=/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/
+gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "['${KEY}']"
+gsettings set "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${KEY}" name 'AI Usage TUI'
+gsettings set "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${KEY}" command 'ptyxis --new-window -T "AI Usage" -- ai-usagebar-tui'
+gsettings set "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${KEY}" binding '<Super>u'
+```
+
+Swap `ptyxis` for `gnome-terminal`, `kgx`, `kitty`, `foot`, etc. as needed.
+
 ## Vendor support matrix
 
 | Vendor | Endpoint | What you see |
