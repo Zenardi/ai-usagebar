@@ -9,8 +9,10 @@
 //! (`~/.claude/.credentials.json`, `~/.codex/auth.json`) follow the dotfile
 //! convention on macOS too, and every user-facing message and the README
 //! document `~/.config/ai-usagebar` / `~/.cache/ai-usagebar`. Using
-//! `~/Library/...` would silently diverge from all of that. On Linux this is
-//! byte-identical to what `directories::BaseDirs` returned before.
+//! `~/Library/...` would silently diverge from all of that. On Linux, with
+//! `$HOME` set, this matches what `directories::BaseDirs` returned before; we
+//! deliberately don't replicate that crate's `getpwuid` fallback for the rare
+//! case where `$HOME` is unset (the widget then shows its `⚠` fallback).
 
 use std::path::PathBuf;
 
@@ -18,9 +20,11 @@ use crate::error::{AppError, Result};
 
 const APP_DIR: &str = "ai-usagebar";
 
-fn home() -> Result<PathBuf> {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
+/// Resolve a home directory from a `$HOME` value. Split from env reading so
+/// tests exercise the logic without mutating the process-global environment
+/// (which is UB under multi-threaded `cargo test`).
+fn home_from(raw: Option<std::ffi::OsString>) -> Result<PathBuf> {
+    raw.map(PathBuf::from)
         .filter(|h| !h.as_os_str().is_empty())
         .ok_or_else(|| AppError::Other("could not resolve HOME".into()))
 }
@@ -28,13 +32,22 @@ fn home() -> Result<PathBuf> {
 /// Resolve an XDG base dir from `$VAR` (used only when it holds an absolute
 /// path, per the XDG spec) falling back to `$HOME/<fallback>`.
 fn xdg_base(var: &str, fallback: &str) -> Result<PathBuf> {
-    if let Some(v) = std::env::var_os(var) {
+    xdg_base_from(std::env::var_os(var), std::env::var_os("HOME"), fallback)
+}
+
+/// Pure core of [`xdg_base`] — tested directly, without touching global env.
+fn xdg_base_from(
+    var: Option<std::ffi::OsString>,
+    home: Option<std::ffi::OsString>,
+    fallback: &str,
+) -> Result<PathBuf> {
+    if let Some(v) = var {
         let p = PathBuf::from(v);
         if p.is_absolute() {
             return Ok(p);
         }
     }
-    Ok(home()?.join(fallback))
+    Ok(home_from(home)?.join(fallback))
 }
 
 /// Base cache directory (no app segment): `$XDG_CACHE_HOME` or `~/.cache`.
@@ -56,69 +69,48 @@ pub fn config_file() -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::OsString;
 
-    /// Guard against concurrent env mutation in this module's tests.
-    fn with_env<F: FnOnce()>(vars: &[(&str, Option<&str>)], f: F) {
-        use std::sync::Mutex;
-        static LOCK: Mutex<()> = Mutex::new(());
-        let _g = LOCK.lock().unwrap();
-
-        let saved: Vec<(String, Option<std::ffi::OsString>)> = vars
-            .iter()
-            .map(|(k, _)| (k.to_string(), std::env::var_os(k)))
-            .collect();
-        for (k, v) in vars {
-            match v {
-                Some(val) => unsafe { std::env::set_var(k, val) },
-                None => unsafe { std::env::remove_var(k) },
-            }
-        }
-        f();
-        for (k, v) in saved {
-            match v {
-                Some(val) => unsafe { std::env::set_var(&k, val) },
-                None => unsafe { std::env::remove_var(&k) },
-            }
-        }
+    fn os(s: &str) -> OsString {
+        OsString::from(s)
     }
 
     #[test]
-    fn cache_base_prefers_xdg_when_absolute() {
-        with_env(
-            &[("XDG_CACHE_HOME", Some("/xdg/cache")), ("HOME", Some("/home/u"))],
-            || {
-                assert_eq!(cache_base().unwrap(), PathBuf::from("/xdg/cache"));
-            },
+    fn xdg_prefers_absolute_var() {
+        assert_eq!(
+            xdg_base_from(Some(os("/xdg/cache")), Some(os("/home/u")), ".cache").unwrap(),
+            PathBuf::from("/xdg/cache")
         );
     }
 
     #[test]
-    fn cache_base_falls_back_to_home_dotcache() {
-        with_env(&[("XDG_CACHE_HOME", None), ("HOME", Some("/home/u"))], || {
-            assert_eq!(cache_base().unwrap(), PathBuf::from("/home/u/.cache"));
-        });
-    }
-
-    #[test]
-    fn relative_xdg_is_ignored_per_spec() {
-        with_env(
-            &[("XDG_CONFIG_HOME", Some("relative/path")), ("HOME", Some("/home/u"))],
-            || {
-                assert_eq!(
-                    config_dir().unwrap(),
-                    PathBuf::from("/home/u/.config/ai-usagebar")
-                );
-            },
+    fn xdg_falls_back_to_home_dotdir() {
+        assert_eq!(
+            xdg_base_from(None, Some(os("/home/u")), ".cache").unwrap(),
+            PathBuf::from("/home/u/.cache")
         );
     }
 
     #[test]
-    fn config_file_is_under_config_dir() {
-        with_env(&[("XDG_CONFIG_HOME", None), ("HOME", Some("/home/u"))], || {
-            assert_eq!(
-                config_file().unwrap(),
-                PathBuf::from("/home/u/.config/ai-usagebar/config.toml")
-            );
-        });
+    fn relative_or_empty_var_is_ignored_per_spec() {
+        // XDG spec: a non-absolute value must be ignored.
+        assert_eq!(
+            xdg_base_from(Some(os("relative/path")), Some(os("/home/u")), ".config").unwrap(),
+            PathBuf::from("/home/u/.config")
+        );
+        assert_eq!(
+            xdg_base_from(Some(os("")), Some(os("/home/u")), ".cache").unwrap(),
+            PathBuf::from("/home/u/.cache")
+        );
+    }
+
+    #[test]
+    fn home_unset_or_empty_errors() {
+        assert!(home_from(None).is_err());
+        assert!(home_from(Some(os(""))).is_err());
+        assert_eq!(
+            home_from(Some(os("/home/u"))).unwrap(),
+            PathBuf::from("/home/u")
+        );
     }
 }

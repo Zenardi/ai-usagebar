@@ -44,6 +44,13 @@ json="$("$BIN" --json --plain --format "$FORMAT" 2>/dev/null || true)"
 text="$(printf '%s' "$json" | "$JQ" -r '.text // "⚠"' 2>/dev/null || echo '⚠')"
 tooltip="$(printf '%s' "$json" | "$JQ" -r '.tooltip // ""' 2>/dev/null || echo '')"
 class="$(printf '%s' "$json" | "$JQ" -r '.class // "low"' 2>/dev/null || echo low)"
+
+# Empty output (binary not found / produced nothing) must read as a hard error,
+# not a healthy green blank — jq's `//` fallback does not fire on zero input.
+if [ -z "$json" ] || [ -z "$text" ]; then
+    text="⚠"
+    class="critical"
+fi
 color="$(color_for "$class")"
 
 # --- Menu-bar item ---
@@ -54,6 +61,10 @@ echo "---"
 #     rendered in a monospace font so it aligns). ---
 if [ -n "$tooltip" ]; then
     printf '%s\n' "$tooltip" | while IFS= read -r line; do
+        # Sanitize for SwiftBar: ASCII `|` is its param delimiter and a line
+        # starting with `--` becomes a submenu — error tooltips can contain both.
+        line="${line//|/¦}"
+        case "$line" in --*) line=" $line" ;; esac
         printf '%s | font=Menlo size=13\n' "$line"
     done
     echo "---"

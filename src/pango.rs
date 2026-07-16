@@ -33,14 +33,12 @@ pub fn escape(s: &str) -> String {
         .replace('>', "&gt;")
 }
 
-/// Strip Pango markup to plain text: remove every `<…>` tag and unescape the
-/// entities [`escape`] produces. The inverse-ish of the renderers — used by the
-/// widget's `--plain` mode so non-Pango status bars (macOS SwiftBar, xbar, …)
-/// receive clean text instead of literal `<span …>` markup.
-///
-/// Tag scanning mirrors [`visible_width`]; entity unescaping does `&amp;` LAST
-/// so an escaped-literal `&lt;` (stored as `&amp;lt;`) round-trips correctly.
-pub fn strip_markup(s: &str) -> String {
+/// Plain visible text of a Pango-marked string: `<…>` tags removed and the
+/// entities [`escape`] produces (`&amp;`/`&lt;`/`&gt;`) collapsed back to the
+/// single character each renders as — i.e. exactly what Pango shows. `&amp;`
+/// is un-escaped LAST so an escaped-literal `&lt;` (stored as `&amp;lt;`)
+/// round-trips correctly. Shared by [`strip_markup`] and [`visible_width`].
+fn visible_text(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut depth = 0usize;
     for ch in s.chars() {
@@ -54,6 +52,13 @@ pub fn strip_markup(s: &str) -> String {
     out.replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&amp;", "&")
+}
+
+/// Strip Pango markup to plain text — used by the widget's `--plain` mode so
+/// non-Pango status bars (macOS SwiftBar, xbar, …) get clean text instead of
+/// literal `<span …>` markup.
+pub fn strip_markup(s: &str) -> String {
+    visible_text(s)
 }
 
 /// Map a usage percentage to a severity tier, matching `color_for`
@@ -153,21 +158,13 @@ fn repeat_char(c: char, n: u32) -> String {
     std::iter::repeat_n(c, n as usize).collect()
 }
 
-/// Count the visible width of a Pango-marked string (its character count with
-/// all `<span …>…</span>` tags stripped). Used by the bordered-box renderer
-/// for padding alignment — claudebar implements this with `sed 's/<[^>]*>//g'`.
+/// Rendered width of a Pango-marked string, in columns: `<…>` tags stripped and
+/// each entity counted as the single glyph it renders as (via [`visible_text`]).
+/// Used by the bordered-box renderer for padding alignment. Counting an entity
+/// like `&amp;` as one column (not five) keeps boxes aligned when a plan name or
+/// error message contains `&` / `<` / `>`.
 pub fn visible_width(s: &str) -> usize {
-    let mut depth = 0usize;
-    let mut count = 0usize;
-    for ch in s.chars() {
-        match ch {
-            '<' => depth += 1,
-            '>' if depth > 0 => depth = depth.saturating_sub(1),
-            _ if depth == 0 => count += 1,
-            _ => {}
-        }
-    }
-    count
+    visible_text(s).chars().count()
 }
 
 #[cfg(test)]
@@ -271,6 +268,14 @@ mod tests {
     #[test]
     fn visible_width_handles_nested_tags() {
         assert_eq!(visible_width("<a><b>xy</b></a>"), 2);
+    }
+
+    #[test]
+    fn visible_width_counts_entities_as_one_glyph() {
+        // "a & b" renders as 5 columns (not 9); keeps bordered boxes aligned
+        // when a label/error contains &, <, or >.
+        assert_eq!(visible_width("a &amp; b"), 5);
+        assert_eq!(visible_width("<span foreground='#f00'>&lt;tag&gt;</span>"), 5);
     }
 
     #[test]
