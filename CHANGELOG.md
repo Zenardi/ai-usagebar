@@ -9,6 +9,10 @@ Each release is also published at
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.5.0] — 2026-07-16
+
 ### Added
 
 - **macOS support.** The widget and TUI now build, install, and run on macOS
@@ -217,7 +221,8 @@ vendors. Highlights:
 - Live API smoke test suite (`make smoke`) that exercises the real
   undocumented endpoints to detect schema drift before users do.
 
-[Unreleased]: https://github.com/akitaonrails/ai-usagebar/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/akitaonrails/ai-usagebar/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/akitaonrails/ai-usagebar/releases/tag/v0.5.0
 [0.4.0]: https://github.com/akitaonrails/ai-usagebar/releases/tag/v0.4.0
 [0.3.3]: https://github.com/akitaonrails/ai-usagebar/releases/tag/v0.3.3
 [0.3.2]: https://github.com/akitaonrails/ai-usagebar/releases/tag/v0.3.2
