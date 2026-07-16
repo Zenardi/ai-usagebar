@@ -16,8 +16,8 @@ Nothing yet.
 ### Added
 
 - **macOS support.** The widget and TUI now build, install, and run on macOS
-  (Apple Silicon + Intel), using XDG-style paths (`~/.config`, `~/.cache`) to
-  stay consistent with the `~/.claude` / `~/.codex` credential convention.
+  (Apple Silicon; Intel builds from source), using XDG-style paths (`~/.config`,
+  `~/.cache`) to stay consistent with the `~/.claude` / `~/.codex` convention.
 - `--plain` output mode that strips Pango markup from the `text`/`tooltip`
   fields, so non-Pango status bars (macOS SketchyBar, xbar) receive clean text.
 - `[ui] refresh_command` config option: a command run after cycling vendors or
@@ -27,8 +27,8 @@ Nothing yet.
 - SketchyBar plugin and example config under `packaging/sketchybar/`, a Homebrew
   formula template under `packaging/homebrew/`, and a README "macOS (SketchyBar)"
   section.
-- macOS release targets (`aarch64-apple-darwin`, `x86_64-apple-darwin`) in the
-  GitHub release workflow, with Homebrew/curl install lines in the release notes.
+- macOS release target (`aarch64-apple-darwin`) in the GitHub release workflow,
+  with Homebrew/curl install lines in the release notes.
 
 ### Changed
 

@@ -31,7 +31,7 @@ When cutting a new version (patch, minor, or major):
    ```
 7. **Wait for CI** (3–5 min): the tag push auto-triggers
    `.github/workflows/release.yml` which builds Linux (x86_64 + aarch64)
-   and macOS (arm64 + x86_64) tarballs and publishes a GitHub Release.
+   and macOS (arm64) tarballs and publishes a GitHub Release.
 8. **Pin the real sha256s** in both PKGBUILDs and the Homebrew formula:
    ```
    cd packaging/aur
@@ -42,10 +42,8 @@ When cutting a new version (patch, minor, or major):
    curl -sL https://github.com/Zenardi/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-linux-x86_64.tar.gz.sha256
    # Bin aarch64:
    curl -sL https://github.com/Zenardi/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-linux-aarch64.tar.gz.sha256
-   # Homebrew darwin arm64 → paste into on_arm sha256 in ai-usagebar.rb:
+   # Homebrew darwin arm64 → paste into the sha256 in ai-usagebar.rb:
    curl -sL https://github.com/Zenardi/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-darwin-arm64.tar.gz.sha256
-   # Homebrew darwin x86_64 → paste into on_intel sha256:
-   curl -sL https://github.com/Zenardi/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-darwin-x86_64.tar.gz.sha256
    ```
 9. **Regenerate `.SRCINFO`s**:
    ```

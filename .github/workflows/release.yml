@@ -30,10 +30,6 @@ jobs:
             artifact: ai-usagebar-darwin-arm64
             builder: cargo
             os: macos-14
-          - target: x86_64-apple-darwin
-            artifact: ai-usagebar-darwin-x86_64
-            builder: cargo
-            os: macos-13
 
     runs-on: ${{ matrix.os }}
 
@@ -126,8 +122,6 @@ jobs:
             echo "curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/download/${TAG}/ai-usagebar-linux-x86_64.tar.gz | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui"
             echo "# macOS Apple Silicon"
             echo "curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/download/${TAG}/ai-usagebar-darwin-arm64.tar.gz | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui"
-            echo "# macOS Intel"
-            echo "curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/download/${TAG}/ai-usagebar-darwin-x86_64.tar.gz | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui"
             echo '```'
             echo
             echo "## Checksums (SHA256)"

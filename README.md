@@ -41,7 +41,7 @@ The `-bin` variant downloads the same x86_64 ELF that CI built and tested. The s
 
 ### macOS
 
-Prebuilt binaries for Apple Silicon and Intel are published on each [release](https://github.com/Zenardi/ai-usagebar/releases). The [macOS (SketchyBar)](#macos-sketchybar) section has the curl / Homebrew / source install options plus bar setup — or just run `ai-usagebar-tui`.
+A prebuilt Apple Silicon binary is published on each [release](https://github.com/Zenardi/ai-usagebar/releases) (Intel Macs build from source). The [macOS (SketchyBar)](#macos-sketchybar) section has the curl / Homebrew / source install options plus bar setup — or just run `ai-usagebar-tui`.
 
 ### From source
 
@@ -786,18 +786,16 @@ Authentication is identical to Linux: the `claude` and `codex` CLIs write their 
 
 ### Install
 
-**Prebuilt binaries** (fastest) — grab the tarball for your arch from the [latest release](https://github.com/Zenardi/ai-usagebar/releases/latest):
+**Prebuilt binary** (fastest, Apple Silicon) — from the [latest release](https://github.com/Zenardi/ai-usagebar/releases/latest):
 
 ```bash
 mkdir -p ~/.local/bin
-# Apple Silicon:
 curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/latest/download/ai-usagebar-darwin-arm64.tar.gz \
-  | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui
-# Intel:
-curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/latest/download/ai-usagebar-darwin-x86_64.tar.gz \
   | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui
 brew install sketchybar jq   # sketchybar for the bar, jq for the plugin
 ```
+
+> **Intel Macs:** CI publishes an Apple Silicon binary only (GitHub's Intel macOS runners are scarce). On an Intel Mac, use the **From source** build below.
 
 **Homebrew** — the formula (`packaging/homebrew/ai-usagebar.rb`) needs its `sha256`s pinned from the release's `.sha256` assets and pushed to a `Zenardi/homebrew-tap` repo; once that's done:
 

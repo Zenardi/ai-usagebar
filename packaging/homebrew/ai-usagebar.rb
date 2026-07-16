@@ -4,26 +4,22 @@
 # `brew install Zenardi/tap/ai-usagebar`.
 #
 # Release process (see CLAUDE.md): after CI publishes the vX.Y.Z release, bump
-# `version` here and replace the two `sha256` placeholders with the real digests
-# from the `*-darwin-*.tar.gz.sha256` assets, then push to the tap repo.
+# `version` here and replace the `sha256` placeholder with the real digest from
+# the `ai-usagebar-darwin-arm64.tar.gz.sha256` asset, then push to the tap repo.
+#
+# Apple Silicon only — CI publishes an arm64 tarball. Intel Macs build from
+# source (`cargo build --release`); GitHub's Intel macOS runners are scarce.
 class AiUsagebar < Formula
   desc "Status-bar widget and tabbed TUI for AI plan usage (Anthropic/OpenAI/Z.AI/OpenRouter)"
   homepage "https://github.com/Zenardi/ai-usagebar"
   version "0.5.0"
   license "MIT"
   depends_on :macos
+  depends_on arch: :arm64
 
-  on_arm do
-    url "https://github.com/Zenardi/ai-usagebar/releases/download/v#{version}/ai-usagebar-darwin-arm64.tar.gz"
-    # Replace with the real digest from ai-usagebar-darwin-arm64.tar.gz.sha256
-    sha256 "REPLACE_WITH_DARWIN_ARM64_SHA256"
-  end
-
-  on_intel do
-    url "https://github.com/Zenardi/ai-usagebar/releases/download/v#{version}/ai-usagebar-darwin-x86_64.tar.gz"
-    # Replace with the real digest from ai-usagebar-darwin-x86_64.tar.gz.sha256
-    sha256 "REPLACE_WITH_DARWIN_X86_64_SHA256"
-  end
+  url "https://github.com/Zenardi/ai-usagebar/releases/download/v#{version}/ai-usagebar-darwin-arm64.tar.gz"
+  # Replace with the real digest from ai-usagebar-darwin-arm64.tar.gz.sha256
+  sha256 "REPLACE_WITH_DARWIN_ARM64_SHA256"
 
   def install
     bin.install "ai-usagebar"
