@@ -18,8 +18,7 @@ class AiUsagebar < Formula
   depends_on arch: :arm64
 
   url "https://github.com/Zenardi/ai-usagebar/releases/download/v#{version}/ai-usagebar-darwin-arm64.tar.gz"
-  # Replace with the real digest from ai-usagebar-darwin-arm64.tar.gz.sha256
-  sha256 "REPLACE_WITH_DARWIN_ARM64_SHA256"
+  sha256 "a939cfd81c76ee5f0dbbb3946d0d4ebe7730061bcccddb4e4ba215f9a6cdca2e"
 
   def install
     bin.install "ai-usagebar"

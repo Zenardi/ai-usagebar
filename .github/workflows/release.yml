@@ -75,7 +75,11 @@ jobs:
 
       - name: Compute SHA256
         run: |
-          SHA=$(sha256sum ${{ matrix.artifact }}.tar.gz | awk '{print $1}')
+          # `shasum -a 256` is portable across Linux and macOS runners;
+          # `sha256sum` is Linux-only and silently produced an empty digest on
+          # the macOS job before.
+          SHA=$(shasum -a 256 ${{ matrix.artifact }}.tar.gz | awk '{print $1}')
+          if [ -z "$SHA" ]; then echo "empty sha256 for ${{ matrix.artifact }}" >&2; exit 1; fi
           echo "$SHA  ${{ matrix.artifact }}.tar.gz" > ${{ matrix.artifact }}.tar.gz.sha256
           echo "Built ${{ matrix.artifact }}.tar.gz sha256=$SHA"
 
