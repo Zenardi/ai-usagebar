@@ -1,6 +1,6 @@
 pkgbase = ai-usagebar
 	pkgdesc = Waybar widget + TUI for AI plan usage across Anthropic, OpenAI, Z.AI, and OpenRouter
-	pkgver = 0.5.0
+	pkgver = 0.5.1
 	pkgrel = 1
 	url = https://github.com/Zenardi/ai-usagebar
 	arch = x86_64
@@ -15,7 +15,7 @@ pkgbase = ai-usagebar
 	conflicts = ai-usagebar-bin
 	options = !lto
 	options = !debug
-	source = ai-usagebar-0.5.0.tar.gz::https://github.com/Zenardi/ai-usagebar/archive/refs/tags/v0.5.0.tar.gz
+	source = ai-usagebar-0.5.1.tar.gz::https://github.com/Zenardi/ai-usagebar/archive/refs/tags/v0.5.1.tar.gz
 	sha256sums = SKIP
 
 pkgname = ai-usagebar

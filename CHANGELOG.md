@@ -11,6 +11,29 @@ Each release is also published at
 
 Nothing yet.
 
+## [0.5.1] — 2026-07-16
+
+### Fixed
+
+- **macOS: read Claude's OAuth token from the login Keychain.** Claude Code
+  stores it in the Keychain (`Claude Code-credentials`), not
+  `~/.claude/.credentials.json`, so the Anthropic vendor showed `⚠` on every
+  Mac. ai-usagebar now reads it — and writes refreshed tokens back — via
+  `security`, sharing the store with Claude Code the way it shares the file on
+  Linux.
+- Release checksums use portable `shasum -a 256`; the macOS `.sha256` asset was
+  empty before because `sha256sum` doesn't exist on macOS runners.
+- Bordered tooltip boxes stay aligned when a plan/label/error contains `&`,
+  `<`, or `>` (the Pango entity width was over-counted).
+
+### Changed
+
+- Replaced the SketchyBar integration with a native **SwiftBar** menu-bar
+  plugin (`packaging/swiftbar/`); see the macOS section of the README.
+- Dropped the Intel macOS (`x86_64-apple-darwin`) release target — GitHub's
+  Intel runners are unreliable; Intel Macs build from source.
+- Rebranded repository URLs from `akitaonrails` to `Zenardi`.
+
 ## [0.5.0] — 2026-07-16
 
 ### Added
@@ -220,7 +243,8 @@ vendors. Highlights:
 - Live API smoke test suite (`make smoke`) that exercises the real
   undocumented endpoints to detect schema drift before users do.
 
-[Unreleased]: https://github.com/Zenardi/ai-usagebar/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Zenardi/ai-usagebar/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/Zenardi/ai-usagebar/releases/tag/v0.5.1
 [0.5.0]: https://github.com/Zenardi/ai-usagebar/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Zenardi/ai-usagebar/releases/tag/v0.4.0
 [0.3.3]: https://github.com/Zenardi/ai-usagebar/releases/tag/v0.3.3

@@ -54,7 +54,7 @@ make install PREFIX=$HOME/.local   # → ~/.local/bin
 
 ## Authentication
 
-Each vendor authenticates a little differently. Anthropic and OpenAI use OAuth credentials that their official CLIs already wrote to disk, so **no env vars are needed.** Z.AI and OpenRouter use API keys. You can pass those through env vars or, if you don't source secrets in your shell, put them inline in `config.toml`.
+Each vendor authenticates a little differently. Anthropic and OpenAI reuse the OAuth credentials their official CLIs already store — a file on Linux, and on macOS the login Keychain for Claude — so **no env vars are needed.** Z.AI and OpenRouter use API keys. You can pass those through env vars or, if you don't source secrets in your shell, put them inline in `config.toml`.
 
 | Vendor | Method | Action required |
 |---|---|---|
