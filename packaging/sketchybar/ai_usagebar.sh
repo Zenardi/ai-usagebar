@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# SketchyBar plugin for ai-usagebar — https://github.com/akitaonrails/ai-usagebar
+# SketchyBar plugin for ai-usagebar — https://github.com/Zenardi/ai-usagebar
 #
 # SketchyBar runs this on `update_freq`, on subscribed events (e.g.
 # `aibar_refresh`), and on scroll (`mouse.scrolled`). It reads the widget's

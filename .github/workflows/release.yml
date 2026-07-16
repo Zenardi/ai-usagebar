@@ -116,18 +116,18 @@ jobs:
             echo "### macOS (Homebrew)"
             echo
             echo '```bash'
-            echo "brew install akitaonrails/tap/ai-usagebar"
+            echo "brew install Zenardi/tap/ai-usagebar"
             echo '```'
             echo
             echo "### Manual"
             echo
             echo '```bash'
             echo "# Linux x86_64"
-            echo "curl -fsSL https://github.com/akitaonrails/ai-usagebar/releases/download/${TAG}/ai-usagebar-linux-x86_64.tar.gz | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui"
+            echo "curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/download/${TAG}/ai-usagebar-linux-x86_64.tar.gz | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui"
             echo "# macOS Apple Silicon"
-            echo "curl -fsSL https://github.com/akitaonrails/ai-usagebar/releases/download/${TAG}/ai-usagebar-darwin-arm64.tar.gz | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui"
+            echo "curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/download/${TAG}/ai-usagebar-darwin-arm64.tar.gz | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui"
             echo "# macOS Intel"
-            echo "curl -fsSL https://github.com/akitaonrails/ai-usagebar/releases/download/${TAG}/ai-usagebar-darwin-x86_64.tar.gz | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui"
+            echo "curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/download/${TAG}/ai-usagebar-darwin-x86_64.tar.gz | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui"
             echo '```'
             echo
             echo "## Checksums (SHA256)"

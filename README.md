@@ -39,13 +39,9 @@ yay -S ai-usagebar        # compiles from source (~30-60s, hermetic)
 
 The `-bin` variant downloads the same x86_64 ELF that CI built and tested. The source variant compiles locally with your toolchain. Both install identical binaries to `/usr/bin/`. If you already have one installed, switch with `yay -S` the other package; pacman handles the swap through `conflicts`/`provides`.
 
-### macOS (Homebrew)
+### macOS
 
-```bash
-brew install akitaonrails/tap/ai-usagebar
-```
-
-Installs the same universal-tested binaries CI built (Apple Silicon + Intel). See the [macOS (SketchyBar)](#macos-sketchybar) section for bar setup, or just run `ai-usagebar-tui`.
+Prebuilt binaries for Apple Silicon and Intel are published on each [release](https://github.com/Zenardi/ai-usagebar/releases). The [macOS (SketchyBar)](#macos-sketchybar) section has the curl / Homebrew / source install options plus bar setup — or just run `ai-usagebar-tui`.
 
 ### From source
 
@@ -262,7 +258,7 @@ The popup layout adapts per vendor — Session/Weekly/Sonnet/Extra-usage for Ant
   "name": "AI Usagebar",
   "description": "Top-bar indicator showing ai-usagebar plan usage. Click for a native popup with per-window progress bars across Anthropic / OpenAI / Z.AI / OpenRouter.",
   "shell-version": ["45", "46", "47", "48", "49", "50"],
-  "url": "https://github.com/akitaonrails/ai-usagebar"
+  "url": "https://github.com/Zenardi/ai-usagebar"
 }
 ```
 
@@ -790,15 +786,30 @@ Authentication is identical to Linux: the `claude` and `codex` CLIs write their 
 
 ### Install
 
+**Prebuilt binaries** (fastest) — grab the tarball for your arch from the [latest release](https://github.com/Zenardi/ai-usagebar/releases/latest):
+
 ```bash
-brew install akitaonrails/tap/ai-usagebar   # prebuilt binaries (Apple Silicon + Intel)
-brew install sketchybar jq                   # sketchybar for the bar, jq for the plugin
+mkdir -p ~/.local/bin
+# Apple Silicon:
+curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/latest/download/ai-usagebar-darwin-arm64.tar.gz \
+  | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui
+# Intel:
+curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/latest/download/ai-usagebar-darwin-x86_64.tar.gz \
+  | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui
+brew install sketchybar jq   # sketchybar for the bar, jq for the plugin
 ```
 
-Or build from source — the crate is pure Rust with a rustls/ring TLS stack (no OpenSSL, no system deps):
+**Homebrew** — the formula (`packaging/homebrew/ai-usagebar.rb`) needs its `sha256`s pinned from the release's `.sha256` assets and pushed to a `Zenardi/homebrew-tap` repo; once that's done:
 
 ```bash
-git clone https://github.com/akitaonrails/ai-usagebar && cd ai-usagebar
+brew install Zenardi/tap/ai-usagebar
+brew install sketchybar jq
+```
+
+**From source** — the crate is pure Rust with a rustls/ring TLS stack (no OpenSSL, no system deps):
+
+```bash
+git clone https://github.com/Zenardi/ai-usagebar && cd ai-usagebar
 cargo build --release
 make install PREFIX=$HOME/.local     # → ~/.local/bin (Apple Silicon Homebrew is /opt/homebrew)
 ```
@@ -818,7 +829,10 @@ The plugin and an example item config live in [`packaging/sketchybar/`](packagin
 
 ```bash
 mkdir -p ~/.config/sketchybar/plugins
-cp packaging/sketchybar/ai_usagebar.sh ~/.config/sketchybar/plugins/
+# From a clone: cp packaging/sketchybar/ai_usagebar.sh ~/.config/sketchybar/plugins/
+# Otherwise fetch it:
+curl -fsSL https://raw.githubusercontent.com/Zenardi/ai-usagebar/main/packaging/sketchybar/ai_usagebar.sh \
+  -o ~/.config/sketchybar/plugins/ai_usagebar.sh
 chmod +x ~/.config/sketchybar/plugins/ai_usagebar.sh
 # then merge packaging/sketchybar/sketchybarrc.example into your sketchybarrc
 sketchybar --reload
@@ -935,7 +949,7 @@ If your module doesn't use `signal: 13`, the signal is a no-op and the bar will 
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for the release history. Each release also has its own page at <https://github.com/akitaonrails/ai-usagebar/releases> with the auto-generated install snippet and checksum.
+See [CHANGELOG.md](CHANGELOG.md) for the release history. Each release also has its own page at <https://github.com/Zenardi/ai-usagebar/releases> with the auto-generated install snippet and checksum.
 
 ## Acknowledgements
 

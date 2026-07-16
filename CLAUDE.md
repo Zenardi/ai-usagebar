@@ -36,16 +36,16 @@ When cutting a new version (patch, minor, or major):
    ```
    cd packaging/aur
    # Source:
-   curl -sLO https://github.com/akitaonrails/ai-usagebar/archive/refs/tags/vX.Y.Z.tar.gz
+   curl -sLO https://github.com/Zenardi/ai-usagebar/archive/refs/tags/vX.Y.Z.tar.gz
    sha256sum vX.Y.Z.tar.gz   # paste into PKGBUILD
    # Bin x86_64:
-   curl -sL https://github.com/akitaonrails/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-linux-x86_64.tar.gz.sha256
+   curl -sL https://github.com/Zenardi/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-linux-x86_64.tar.gz.sha256
    # Bin aarch64:
-   curl -sL https://github.com/akitaonrails/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-linux-aarch64.tar.gz.sha256
+   curl -sL https://github.com/Zenardi/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-linux-aarch64.tar.gz.sha256
    # Homebrew darwin arm64 → paste into on_arm sha256 in ai-usagebar.rb:
-   curl -sL https://github.com/akitaonrails/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-darwin-arm64.tar.gz.sha256
+   curl -sL https://github.com/Zenardi/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-darwin-arm64.tar.gz.sha256
    # Homebrew darwin x86_64 → paste into on_intel sha256:
-   curl -sL https://github.com/akitaonrails/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-darwin-x86_64.tar.gz.sha256
+   curl -sL https://github.com/Zenardi/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-darwin-x86_64.tar.gz.sha256
    ```
 9. **Regenerate `.SRCINFO`s**:
    ```
@@ -57,8 +57,9 @@ When cutting a new version (patch, minor, or major):
     - `~/Projects/aur-ai-usagebar-bin` → `ssh://aur@aur.archlinux.org/ai-usagebar-bin.git`
 11. **Push the Homebrew formula** to the tap repo (separate git repo): copy the
     sha-pinned `packaging/homebrew/ai-usagebar.rb` into `homebrew-tap` →
-    `github.com/akitaonrails/homebrew-tap` (`Formula/ai-usagebar.rb`), commit, push.
-    Users then get it via `brew install akitaonrails/tap/ai-usagebar`.
+    `github.com/Zenardi/homebrew-tap` (`Formula/ai-usagebar.rb`), commit, push.
+    Users then get it via `brew install Zenardi/tap/ai-usagebar`. (Create the
+    `Zenardi/homebrew-tap` repo once, the first time.)
 
 **Anything skipping any of 1–11 is an incomplete release.** Tags are
 immutable; do **not** force-move a tag once it's pushed. Cut a new
