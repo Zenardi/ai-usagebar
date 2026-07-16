@@ -32,9 +32,8 @@ class AiUsagebar < Formula
       Anthropic/OpenAI use OAuth from the official CLIs — run `claude` and
       `codex login` once. Z.AI/OpenRouter use API keys (env var or config).
 
-      For a SketchyBar module see packaging/sketchybar/ in the repo, and set
-      under [ui] in ~/.config/ai-usagebar/config.toml:
-        refresh_command = "sketchybar --trigger aibar_refresh"
+      For a native menu-bar item, install SwiftBar and drop in the plugin from
+      packaging/swiftbar/ (see the repo's macOS section).
     EOS
   end
 

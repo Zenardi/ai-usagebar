@@ -202,7 +202,7 @@ async fn http_429_falls_back_to_stale_cache_with_pause_indicator() {
 async fn plain_mode_strips_rendered_pango_markup() {
     // Drives the full pipeline to a real Pango-marked tooltip, then applies the
     // `--plain` transform (pango::strip_markup) and asserts the result is
-    // markup-free — the guarantee macOS SketchyBar / xbar rely on.
+    // markup-free — the guarantee macOS SwiftBar / xbar rely on.
     let mut server = mockito::Server::new_async().await;
     server
         .mock("GET", "/api/oauth/usage")

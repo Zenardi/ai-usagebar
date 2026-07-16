@@ -41,7 +41,7 @@ The `-bin` variant downloads the same x86_64 ELF that CI built and tested. The s
 
 ### macOS
 
-A prebuilt Apple Silicon binary is published on each [release](https://github.com/Zenardi/ai-usagebar/releases) (Intel Macs build from source). The [macOS (SketchyBar)](#macos-sketchybar) section has the curl / Homebrew / source install options plus bar setup — or just run `ai-usagebar-tui`.
+A prebuilt Apple Silicon binary is published on each [release](https://github.com/Zenardi/ai-usagebar/releases) (Intel Macs build from source). The [macOS](#macos) section has the curl / Homebrew / source install options plus menu-bar setup — or just run `ai-usagebar-tui`.
 
 ### From source
 
@@ -776,9 +776,9 @@ gsettings set "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${
 
 Swap `ptyxis` for `gnome-terminal`, `kgx`, `kitty`, `foot`, etc. as needed.
 
-## macOS (SketchyBar)
+## macOS
 
-macOS has no Waybar. The closest analog is [SketchyBar](https://github.com/FelixKratz/SketchyBar) (the config-driven bar people pair with yabai/aerospace), and ai-usagebar drives it through a small plugin. Everything works the same way underneath — the same binaries, the same undocumented endpoints, the same cache. If you don't want a bar at all, skip straight to the standalone TUI below.
+macOS has no Waybar. To get ai-usagebar into the **native menu bar** (up by the clock), use [SwiftBar](https://github.com/swiftbar/SwiftBar) — a tiny menu-bar host app that runs a script and renders its output as a real menu-bar item with a click-dropdown. The plugin just calls the `ai-usagebar` binary, so everything works the same underneath: same binaries, same undocumented endpoints, same cache. If you don't want a menu-bar item at all, skip straight to the standalone TUI below.
 
 Authentication is identical to Linux: the `claude` and `codex` CLIs write their OAuth credentials to `~/.claude/.credentials.json` and `~/.codex/auth.json` on macOS too, so **no env vars are needed** for Anthropic/OpenAI. Z.AI and OpenRouter still use API keys (env var or inline in config).
 
@@ -786,25 +786,23 @@ Authentication is identical to Linux: the `claude` and `codex` CLIs write their 
 
 ### Install
 
-**Prebuilt binary** (fastest, Apple Silicon) — from the [latest release](https://github.com/Zenardi/ai-usagebar/releases/latest):
+**Homebrew** (recommended):
+
+```bash
+brew install Zenardi/tap/ai-usagebar   # the widget + TUI (Apple Silicon)
+brew install --cask swiftbar           # the menu-bar host
+brew install jq                        # used by the plugin
+```
+
+**Prebuilt binary** — from the [latest release](https://github.com/Zenardi/ai-usagebar/releases/latest), if you'd rather not tap Homebrew for the binary:
 
 ```bash
 mkdir -p ~/.local/bin
 curl -fsSL https://github.com/Zenardi/ai-usagebar/releases/latest/download/ai-usagebar-darwin-arm64.tar.gz \
   | tar xz -C ~/.local/bin ai-usagebar ai-usagebar-tui
-brew install sketchybar jq   # sketchybar for the bar, jq for the plugin
 ```
 
-> **Intel Macs:** CI publishes an Apple Silicon binary only (GitHub's Intel macOS runners are scarce). On an Intel Mac, use the **From source** build below.
-
-**Homebrew** — the formula (`packaging/homebrew/ai-usagebar.rb`) needs its `sha256`s pinned from the release's `.sha256` assets and pushed to a `Zenardi/homebrew-tap` repo; once that's done:
-
-```bash
-brew install Zenardi/tap/ai-usagebar
-brew install sketchybar jq
-```
-
-**From source** — the crate is pure Rust with a rustls/ring TLS stack (no OpenSSL, no system deps):
+**From source** — the crate is pure Rust with a rustls/ring TLS stack (no OpenSSL, no system deps). This is also the path for **Intel Macs** (CI publishes an Apple Silicon binary only, since GitHub's Intel macOS runners are scarce):
 
 ```bash
 git clone https://github.com/Zenardi/ai-usagebar && cd ai-usagebar
@@ -812,42 +810,44 @@ cargo build --release
 make install PREFIX=$HOME/.local     # → ~/.local/bin (Apple Silicon Homebrew is /opt/homebrew)
 ```
 
+### SwiftBar — native menu-bar item
+
+The plugin lives at [`packaging/swiftbar/ai-usagebar.5m.sh`](packaging/swiftbar/ai-usagebar.5m.sh). It shows the active vendor's usage in the menu bar (colored by severity) and a dropdown with the full per-window breakdown plus actions: refresh, cycle vendor, and open the TUI.
+
+1. Launch **SwiftBar** once; it asks you to pick a plugin folder (e.g. `~/Library/Application Support/SwiftBar`).
+2. Drop the plugin into that folder and make it executable — matching whatever path you chose:
+
+```bash
+PLUGIN_DIR="$HOME/Library/Application Support/SwiftBar"   # ← your SwiftBar plugin folder
+mkdir -p "$PLUGIN_DIR"
+curl -fsSL https://raw.githubusercontent.com/Zenardi/ai-usagebar/main/packaging/swiftbar/ai-usagebar.5m.sh \
+  -o "$PLUGIN_DIR/ai-usagebar.5m.sh"
+chmod +x "$PLUGIN_DIR/ai-usagebar.5m.sh"
+```
+
+3. In SwiftBar, choose **Refresh All** (or reopen the app). The item appears in the menu bar, next to the clock / Control Center.
+
+The `.5m.` in the filename is SwiftBar's refresh interval (5 minutes). Rename to change it (e.g. `.10m.`); keep it ≥ ~2 min since the Anthropic/OpenAI endpoints rate-limit aggressively below ~300s (the widget caches for 60s).
+
+Cycling vendors and refresh work straight from the dropdown — SwiftBar re-runs the plugin (`refresh=true`), so no extra config is needed. If you want the menu-bar item to update **instantly** after you change settings in the TUI, point `[ui] refresh_command` at SwiftBar's refresh URL:
+
+```toml
+[ui]
+refresh_command = "open -g swiftbar://refreshallplugins"
+```
+
 ### The `--plain` output mode
 
-SketchyBar (and xbar/SwiftBar) can't render Waybar's Pango markup. Pass `--plain` and ai-usagebar strips all markup from the `text`/`tooltip` fields, so `--json --plain` yields clean strings you can parse with `jq`. It composes with any `--format` (even ones containing `{session_bar}`):
+SwiftBar (like xbar) can't render Waybar's Pango markup, so the plugin passes `--plain`: ai-usagebar strips all markup from the `text`/`tooltip` fields and `--json --plain` yields clean strings you can parse with `jq`. It composes with any `--format` (even ones containing `{session_bar}`):
 
 ```bash
 ai-usagebar --vendor anthropic --json --plain --format '{vendor_short} {session_pct}% · {session_reset}'
 # {"text":"cld 29% · 1h 12m","tooltip":"…plain text…","class":"mid"}
 ```
 
-### SketchyBar module
-
-The plugin and an example item config live in [`packaging/sketchybar/`](packaging/sketchybar/). It reads the plain JSON, maps the severity `class` (low/mid/high/critical) to a color, handles scroll-to-cycle, and opens the TUI on click.
-
-```bash
-mkdir -p ~/.config/sketchybar/plugins
-# From a clone: cp packaging/sketchybar/ai_usagebar.sh ~/.config/sketchybar/plugins/
-# Otherwise fetch it:
-curl -fsSL https://raw.githubusercontent.com/Zenardi/ai-usagebar/main/packaging/sketchybar/ai_usagebar.sh \
-  -o ~/.config/sketchybar/plugins/ai_usagebar.sh
-chmod +x ~/.config/sketchybar/plugins/ai_usagebar.sh
-# then merge packaging/sketchybar/sketchybarrc.example into your sketchybarrc
-sketchybar --reload
-```
-
-For instant refresh after cycling vendors or saving settings, set a `refresh_command` in `~/.config/ai-usagebar/config.toml` — the macOS analog of Waybar's `signal: 13`:
-
-```toml
-[ui]
-refresh_command = "sketchybar --trigger aibar_refresh"
-```
-
-The example `sketchybarrc` registers the `aibar_refresh` custom event, sets `update_freq=300`, subscribes to `mouse.scrolled` (scroll to cycle vendors), and opens `ai-usagebar-tui` on click. Swap the terminal in the plugin's `click_script` (`open -na Ghostty …`) for iTerm, kitty, etc.
-
 ### Alternative: just the TUI
 
-The Waybar/SketchyBar widget is optional. `ai-usagebar-tui` is a fully standalone cross-platform terminal app — it runs in Terminal.app, iTerm2, Ghostty, Kitty, etc. with no bar setup at all, and shows all four vendors at once. Bind it to a hotkey (e.g. via Raycast/skhd) or just run it when you want to check usage.
+The menu-bar widget is optional. `ai-usagebar-tui` is a fully standalone cross-platform terminal app — it runs in Terminal.app, iTerm2, Ghostty, Kitty, etc. with no menu-bar setup at all, and shows all four vendors at once. Bind it to a hotkey (e.g. via Raycast/skhd) or just run it when you want to check usage.
 
 ## Vendor support matrix
 

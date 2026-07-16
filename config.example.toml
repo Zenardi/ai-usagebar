@@ -13,8 +13,8 @@
 #
 # Command run after cycling vendors or saving settings so the status bar
 # refreshes immediately. Unset → Linux/Waybar default (pkill -RTMIN+13 waybar).
-# On macOS with SketchyBar:
-# refresh_command = "sketchybar --trigger aibar_refresh"
+# On macOS with SwiftBar (instant refresh after a settings save):
+# refresh_command = "open -g swiftbar://refreshallplugins"
 
 [anthropic]
 enabled = true

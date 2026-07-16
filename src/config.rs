@@ -40,7 +40,7 @@ pub struct UiConfig {
     /// Command run after cycling the active vendor or saving settings, to nudge
     /// the status bar to refresh immediately. When unset/empty, falls back to
     /// the Linux/Waybar default (`pkill -RTMIN+13 waybar`). On macOS with
-    /// SketchyBar, set e.g. `refresh_command = "sketchybar --trigger aibar_refresh"`.
+    /// SwiftBar, set e.g. `refresh_command = "open -g swiftbar://refreshallplugins"`.
     pub refresh_command: Option<String>,
 }
 

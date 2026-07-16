@@ -57,8 +57,8 @@ async fn run_cycle(cli: &Cli) -> i32 {
     // Refresh the bar immediately. On Linux/Waybar the default `pkill
     // -RTMIN+13 waybar` re-runs the module's exec (its `signal: 13` setting;
     // SIGRTMIN is libc-dependent, so the shell-safe glibc value is signal 47).
-    // On macOS, `[ui] refresh_command` overrides this (e.g. `sketchybar
-    // --trigger aibar_refresh`).
+    // On macOS, `[ui] refresh_command` overrides this (e.g. `open -g
+    // swiftbar://refreshallplugins`).
     crate::waybar::request_refresh(config.ui.refresh_command.as_deref());
     0
 }
@@ -85,7 +85,7 @@ async fn run_once(cli: &Cli, out: &mut impl Write) {
         Err(e) => fallback(&e, cli),
     };
 
-    // Markup-free output for non-Pango consumers (macOS SketchyBar, xbar).
+    // Markup-free output for non-Pango consumers (macOS SwiftBar, xbar).
     if cli.plain {
         output.text = crate::pango::strip_markup(&output.text);
         output.tooltip = crate::pango::strip_markup(&output.tooltip);

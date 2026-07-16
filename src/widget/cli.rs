@@ -84,7 +84,7 @@ pub struct Cli {
     pub json: bool,
 
     /// Strip all Pango markup from the bar text and tooltip, emitting plain
-    /// text. For non-Pango status bars (macOS SketchyBar, xbar). Composes with
+    /// text. For non-Pango status bars (macOS SwiftBar, xbar). Composes with
     /// `--json` (clean strings for `jq`) and with the default/`--format` output.
     #[arg(long)]
     pub plain: bool,

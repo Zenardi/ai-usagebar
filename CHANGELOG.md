@@ -19,14 +19,13 @@ Nothing yet.
   (Apple Silicon; Intel builds from source), using XDG-style paths (`~/.config`,
   `~/.cache`) to stay consistent with the `~/.claude` / `~/.codex` convention.
 - `--plain` output mode that strips Pango markup from the `text`/`tooltip`
-  fields, so non-Pango status bars (macOS SketchyBar, xbar) receive clean text.
+  fields, so non-Pango status bars (macOS SwiftBar, xbar) receive clean text.
 - `[ui] refresh_command` config option: a command run after cycling vendors or
   saving settings to nudge the bar to refresh (e.g.
-  `sketchybar --trigger aibar_refresh`); falls back to the Waybar
+  `open -g swiftbar://refreshallplugins`); falls back to the Waybar
   `pkill -RTMIN+13 waybar` default when unset.
-- SketchyBar plugin and example config under `packaging/sketchybar/`, a Homebrew
-  formula template under `packaging/homebrew/`, and a README "macOS (SketchyBar)"
-  section.
+- SwiftBar plugin under `packaging/swiftbar/`, a Homebrew formula template under
+  `packaging/homebrew/`, and a README macOS section.
 - macOS release target (`aarch64-apple-darwin`) in the GitHub release workflow,
   with Homebrew/curl install lines in the release notes.
 

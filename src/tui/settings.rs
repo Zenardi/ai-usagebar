@@ -280,7 +280,7 @@ fn handle_input(input: &mut KeyInput, code: KeyCode) {
 /// nudge the status bar to refresh immediately so a new primary vendor shows up
 /// without waiting for the next interval tick (up to 300s). The default is the
 /// Waybar `pkill -RTMIN+13 waybar` signal; `[ui] refresh_command` overrides it
-/// (e.g. `sketchybar --trigger aibar_refresh` on macOS).
+/// (e.g. `open -g swiftbar://refreshallplugins` on macOS).
 fn save_to_config_default(state: &SettingsState) -> Result<()> {
     let path = default_config_path()?;
     if let Some(parent) = path.parent() {

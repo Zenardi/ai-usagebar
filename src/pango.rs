@@ -35,7 +35,7 @@ pub fn escape(s: &str) -> String {
 
 /// Strip Pango markup to plain text: remove every `<…>` tag and unescape the
 /// entities [`escape`] produces. The inverse-ish of the renderers — used by the
-/// widget's `--plain` mode so non-Pango status bars (macOS SketchyBar, xbar, …)
+/// widget's `--plain` mode so non-Pango status bars (macOS SwiftBar, xbar, …)
 /// receive clean text instead of literal `<span …>` markup.
 ///
 /// Tag scanning mirrors [`visible_width`]; entity unescaping does `&amp;` LAST

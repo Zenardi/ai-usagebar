@@ -15,8 +15,8 @@ pub const PROCESS_NAME: &str = "waybar";
 /// Best-effort status-bar refresh after cycling vendors or saving settings.
 ///
 /// When `command` holds a non-empty string it is run via `sh -c` — this is the
-/// macOS / SketchyBar path (`[ui] refresh_command`), e.g.
-/// `sketchybar --trigger aibar_refresh`. Otherwise it falls back to the
+/// macOS / SwiftBar path (`[ui] refresh_command`), e.g.
+/// `open -g swiftbar://refreshallplugins`. Otherwise it falls back to the
 /// Linux/Waybar default `pkill -RTMIN+13 waybar`. Failing either way is
 /// harmless when nothing is listening.
 pub fn request_refresh(command: Option<&str>) {
