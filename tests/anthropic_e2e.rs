@@ -197,3 +197,68 @@ async fn http_429_falls_back_to_stale_cache_with_pause_indicator() {
     assert!(out.tooltip.contains("HTTP 429"));
     assert!(out.tooltip.contains("slow down"));
 }
+
+#[tokio::test]
+async fn plain_mode_strips_rendered_pango_markup() {
+    // Drives the full pipeline to a real Pango-marked tooltip, then applies the
+    // `--plain` transform (pango::strip_markup) and asserts the result is
+    // markup-free — the guarantee macOS SketchyBar / xbar rely on.
+    let mut server = mockito::Server::new_async().await;
+    server
+        .mock("GET", "/api/oauth/usage")
+        .with_status(200)
+        .with_body(read_fixture("anthropic_usage_full.json"))
+        .create_async()
+        .await;
+
+    let td = TempDir::new().unwrap();
+    let cache = cache_in(&td);
+    let creds = write_creds();
+    let client = reqwest::Client::new();
+    let endpoints = Endpoints {
+        usage: format!("{}/api/oauth/usage", server.url()),
+        token: format!("{}/v1/oauth/token", server.url()),
+    };
+    let outcome = anthropic::fetch_snapshot(
+        &client,
+        creds.path(),
+        &cache,
+        &endpoints,
+        Duration::from_secs(0),
+    )
+    .await
+    .unwrap();
+
+    let now = Utc.with_ymd_and_hms(2026, 5, 23, 12, 0, 0).unwrap();
+    let theme = Theme::default();
+    // A format that includes a Pango progress bar, to prove bars strip too.
+    let format = "{session_pct}% {session_bar}".to_string();
+    let input = RenderInput {
+        outcome: &outcome,
+        theme: &theme,
+        format: &format,
+        tooltip_format: None,
+        icon: None,
+        pace_tolerance: 5,
+        format_pace_color: false,
+        tooltip_pace_pts: false,
+        now,
+    };
+    let out = render_anthropic(&input);
+
+    // Precondition: the rendered output genuinely contains Pango markup.
+    assert!(out.text.contains("<span"), "bar text should have markup");
+    assert!(out.tooltip.contains("<span"), "tooltip should have markup");
+
+    let plain_text = ai_usagebar::pango::strip_markup(&out.text);
+    let plain_tooltip = ai_usagebar::pango::strip_markup(&out.tooltip);
+
+    for s in [&plain_text, &plain_tooltip] {
+        assert!(!s.contains("<span"), "no span tags survive: {s:?}");
+        assert!(!s.contains("foreground="), "no attrs survive: {s:?}");
+        assert!(!s.contains("&lt;") && !s.contains("&gt;") && !s.contains("&amp;"));
+    }
+    // Content survives: the percentage and the bar glyphs are still there.
+    assert!(plain_text.contains('%'));
+    assert!(plain_text.contains('█') || plain_text.contains('░'));
+}

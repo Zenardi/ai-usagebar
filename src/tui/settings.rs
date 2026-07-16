@@ -277,17 +277,21 @@ fn handle_input(input: &mut KeyInput, code: KeyCode) {
 }
 
 /// Save to `~/.config/ai-usagebar/config.toml` (or create it). On success,
-/// signal a running Waybar process (SIGRTMIN+13) so any module configured
-/// with `signal: 13` refreshes its exec output immediately — otherwise the
-/// bar text wouldn't reflect a new primary vendor until the next interval
-/// tick (up to 300s).
+/// nudge the status bar to refresh immediately so a new primary vendor shows up
+/// without waiting for the next interval tick (up to 300s). The default is the
+/// Waybar `pkill -RTMIN+13 waybar` signal; `[ui] refresh_command` overrides it
+/// (e.g. `sketchybar --trigger aibar_refresh` on macOS).
 fn save_to_config_default(state: &SettingsState) -> Result<()> {
     let path = default_config_path()?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| AppError::io_at(parent, e))?;
     }
     save_to_path(state, &path)?;
-    crate::waybar::request_refresh();
+    // Re-read the saved config so a user-configured refresh_command takes effect.
+    let refresh_command = crate::config::Config::load()
+        .ok()
+        .and_then(|c| c.ui.refresh_command);
+    crate::waybar::request_refresh(refresh_command.as_deref());
     Ok(())
 }
 
@@ -355,9 +359,7 @@ fn set_string(doc: &mut DocumentMut, section: &str, key: &str, new_value: &str) 
 }
 
 fn default_config_path() -> Result<PathBuf> {
-    directories::ProjectDirs::from("", "", "ai-usagebar")
-        .map(|p| p.config_dir().join("config.toml"))
-        .ok_or_else(|| AppError::Other("could not resolve config dir".into()))
+    crate::paths::config_file()
 }
 
 /// Render the modal overlay over `area`.

@@ -9,7 +9,30 @@ Each release is also published at
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **macOS support.** The widget and TUI now build, install, and run on macOS
+  (Apple Silicon + Intel), using XDG-style paths (`~/.config`, `~/.cache`) to
+  stay consistent with the `~/.claude` / `~/.codex` credential convention.
+- `--plain` output mode that strips Pango markup from the `text`/`tooltip`
+  fields, so non-Pango status bars (macOS SketchyBar, xbar) receive clean text.
+- `[ui] refresh_command` config option: a command run after cycling vendors or
+  saving settings to nudge the bar to refresh (e.g.
+  `sketchybar --trigger aibar_refresh`); falls back to the Waybar
+  `pkill -RTMIN+13 waybar` default when unset.
+- SketchyBar plugin and example config under `packaging/sketchybar/`, a Homebrew
+  formula template under `packaging/homebrew/`, and a README "macOS (SketchyBar)"
+  section.
+- macOS release targets (`aarch64-apple-darwin`, `x86_64-apple-darwin`) in the
+  GitHub release workflow, with Homebrew/curl install lines in the release notes.
+
+### Changed
+
+- Replaced the `directories` crate with a small XDG path resolver so config and
+  cache locations are identical to before on Linux but use dotfile paths on
+  macOS instead of `~/Library/...`.
+- `make install` no longer relies on GNU `install -D` (unavailable on macOS BSD
+  `install`); it creates parent dirs explicitly and uses portable `install -m`.
 
 ## [0.4.0] — 2026-05-24
 

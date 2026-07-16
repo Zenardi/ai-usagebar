@@ -37,6 +37,11 @@ pub struct Config {
 pub struct UiConfig {
     /// `None` → fall back to anthropic for backward compatibility.
     pub primary: Option<VendorId>,
+    /// Command run after cycling the active vendor or saving settings, to nudge
+    /// the status bar to refresh immediately. When unset/empty, falls back to
+    /// the Linux/Waybar default (`pkill -RTMIN+13 waybar`). On macOS with
+    /// SketchyBar, set e.g. `refresh_command = "sketchybar --trigger aibar_refresh"`.
+    pub refresh_command: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -181,8 +186,7 @@ impl Config {
 }
 
 fn default_path() -> Option<PathBuf> {
-    let proj = directories::ProjectDirs::from("", "", "ai-usagebar")?;
-    Some(proj.config_dir().join("config.toml"))
+    crate::paths::config_file().ok()
 }
 
 #[cfg(test)]

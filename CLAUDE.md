@@ -15,6 +15,8 @@ When cutting a new version (patch, minor, or major):
 3. **Bump `packaging/aur/PKGBUILD`** — `pkgver=X.Y.Z`, `pkgrel=1`, reset `sha256sums` to `'SKIP'`.
 4. **Bump `packaging/aur/PKGBUILD-bin`** — same `pkgver`, `pkgrel=1`, reset both
    `sha256sums_x86_64` and `sha256sums_aarch64` to `'SKIP'`.
+   Also bump `packaging/homebrew/ai-usagebar.rb` `version` and reset both
+   `sha256` values to their `REPLACE_WITH_…` placeholders.
 5. **Run gate before tagging**:
    ```
    cargo test                                  # 200+ tests must pass
@@ -28,9 +30,9 @@ When cutting a new version (patch, minor, or major):
    git push origin main && git push origin vX.Y.Z
    ```
 7. **Wait for CI** (3–5 min): the tag push auto-triggers
-   `.github/workflows/release.yml` which builds both x86_64 and
-   aarch64 tarballs and publishes a GitHub Release.
-8. **Pin the real sha256s** in both PKGBUILDs:
+   `.github/workflows/release.yml` which builds Linux (x86_64 + aarch64)
+   and macOS (arm64 + x86_64) tarballs and publishes a GitHub Release.
+8. **Pin the real sha256s** in both PKGBUILDs and the Homebrew formula:
    ```
    cd packaging/aur
    # Source:
@@ -40,6 +42,10 @@ When cutting a new version (patch, minor, or major):
    curl -sL https://github.com/akitaonrails/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-linux-x86_64.tar.gz.sha256
    # Bin aarch64:
    curl -sL https://github.com/akitaonrails/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-linux-aarch64.tar.gz.sha256
+   # Homebrew darwin arm64 → paste into on_arm sha256 in ai-usagebar.rb:
+   curl -sL https://github.com/akitaonrails/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-darwin-arm64.tar.gz.sha256
+   # Homebrew darwin x86_64 → paste into on_intel sha256:
+   curl -sL https://github.com/akitaonrails/ai-usagebar/releases/download/vX.Y.Z/ai-usagebar-darwin-x86_64.tar.gz.sha256
    ```
 9. **Regenerate `.SRCINFO`s**:
    ```
@@ -49,8 +55,12 @@ When cutting a new version (patch, minor, or major):
 10. **Push to both AUR repos** (separate git repos):
     - `~/Projects/aur-ai-usagebar` → `ssh://aur@aur.archlinux.org/ai-usagebar.git`
     - `~/Projects/aur-ai-usagebar-bin` → `ssh://aur@aur.archlinux.org/ai-usagebar-bin.git`
+11. **Push the Homebrew formula** to the tap repo (separate git repo): copy the
+    sha-pinned `packaging/homebrew/ai-usagebar.rb` into `homebrew-tap` →
+    `github.com/akitaonrails/homebrew-tap` (`Formula/ai-usagebar.rb`), commit, push.
+    Users then get it via `brew install akitaonrails/tap/ai-usagebar`.
 
-**Anything skipping any of 1–10 is an incomplete release.** Tags are
+**Anything skipping any of 1–11 is an incomplete release.** Tags are
 immutable; do **not** force-move a tag once it's pushed. Cut a new
 patch version instead.
 

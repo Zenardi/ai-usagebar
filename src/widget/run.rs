@@ -54,10 +54,12 @@ async fn run_cycle(cli: &Cli) -> i32 {
     let delta = if cli.cycle_next { 1 } else { -1 };
     let _ = crate::active::cycle(&enabled, start, delta);
 
-    // Refresh the bar immediately. The Waybar module's `signal: 13` setting
-    // means SIGRTMIN+13 re-runs the exec. SIGRTMIN is libc-dependent; the
-    // shell-safe value on Linux glibc is signal 47 (= SIGRTMIN(34)+13).
-    crate::waybar::request_refresh();
+    // Refresh the bar immediately. On Linux/Waybar the default `pkill
+    // -RTMIN+13 waybar` re-runs the module's exec (its `signal: 13` setting;
+    // SIGRTMIN is libc-dependent, so the shell-safe glibc value is signal 47).
+    // On macOS, `[ui] refresh_command` overrides this (e.g. `sketchybar
+    // --trigger aibar_refresh`).
+    crate::waybar::request_refresh(config.ui.refresh_command.as_deref());
     0
 }
 
@@ -78,10 +80,16 @@ async fn run_watch(cli: Cli, secs: u64) -> i32 {
 }
 
 async fn run_once(cli: &Cli, out: &mut impl Write) {
-    let output = match build_output(cli).await {
+    let mut output = match build_output(cli).await {
         Ok(o) => o,
         Err(e) => fallback(&e, cli),
     };
+
+    // Markup-free output for non-Pango consumers (macOS SketchyBar, xbar).
+    if cli.plain {
+        output.text = crate::pango::strip_markup(&output.text);
+        output.tooltip = crate::pango::strip_markup(&output.tooltip);
+    }
 
     if cli.output_json() {
         let _ = out.write_all(output.to_json_line().as_bytes());

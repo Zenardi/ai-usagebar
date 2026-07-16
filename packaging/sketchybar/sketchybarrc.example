@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#
+# Example ai-usagebar item for SketchyBar (https://github.com/FelixKratz/SketchyBar).
+#
+# Setup:
+#   1. brew install sketchybar jq ai-usagebar     # ai-usagebar via cargo/make for now
+#   2. mkdir -p ~/.config/sketchybar/plugins
+#   3. cp ai_usagebar.sh ~/.config/sketchybar/plugins/ && chmod +x "$_"
+#   4. Add `refresh_command = "sketchybar --trigger aibar_refresh"` under [ui]
+#      in ~/.config/ai-usagebar/config.toml so scroll/cycle refresh instantly.
+#   5. Merge the lines below into ~/.config/sketchybar/sketchybarrc, then
+#      `sketchybar --reload`.
+
+PLUGIN_DIR="$HOME/.config/sketchybar/plugins"
+
+# Open the TUI on click. Swap Ghostty for your terminal (iTerm, kitty, …).
+CLICK='open -na Ghostty --args -e ai-usagebar-tui'
+
+# Custom event the widget triggers via [ui] refresh_command for instant refresh.
+sketchybar --add event aibar_refresh
+
+sketchybar --add    item      ai_usagebar right                     \
+           --set    ai_usagebar                                     \
+                    icon="󰚩"                                        \
+                    update_freq=300                                 \
+                    script="$PLUGIN_DIR/ai_usagebar.sh"             \
+                    click_script="$CLICK"                           \
+           --subscribe ai_usagebar mouse.scrolled aibar_refresh

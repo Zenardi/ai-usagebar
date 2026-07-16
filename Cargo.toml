@@ -29,7 +29,6 @@ clap = { version = "4", features = ["derive", "env"] }
 chrono = { version = "0.4", features = ["serde"] }
 fs2 = "0.4"
 tempfile = "3"
-directories = "5"
 thiserror = "2"
 base64 = "0.22"
 ratatui = "0.29"

@@ -39,6 +39,14 @@ yay -S ai-usagebar        # compiles from source (~30-60s, hermetic)
 
 The `-bin` variant downloads the same x86_64 ELF that CI built and tested. The source variant compiles locally with your toolchain. Both install identical binaries to `/usr/bin/`. If you already have one installed, switch with `yay -S` the other package; pacman handles the swap through `conflicts`/`provides`.
 
+### macOS (Homebrew)
+
+```bash
+brew install akitaonrails/tap/ai-usagebar
+```
+
+Installs the same universal-tested binaries CI built (Apple Silicon + Intel). See the [macOS (SketchyBar)](#macos-sketchybar) section for bar setup, or just run `ai-usagebar-tui`.
+
 ### From source
 
 ```bash
@@ -771,6 +779,63 @@ gsettings set "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${
 ```
 
 Swap `ptyxis` for `gnome-terminal`, `kgx`, `kitty`, `foot`, etc. as needed.
+
+## macOS (SketchyBar)
+
+macOS has no Waybar. The closest analog is [SketchyBar](https://github.com/FelixKratz/SketchyBar) (the config-driven bar people pair with yabai/aerospace), and ai-usagebar drives it through a small plugin. Everything works the same way underneath — the same binaries, the same undocumented endpoints, the same cache. If you don't want a bar at all, skip straight to the standalone TUI below.
+
+Authentication is identical to Linux: the `claude` and `codex` CLIs write their OAuth credentials to `~/.claude/.credentials.json` and `~/.codex/auth.json` on macOS too, so **no env vars are needed** for Anthropic/OpenAI. Z.AI and OpenRouter still use API keys (env var or inline in config).
+
+> **Paths on macOS.** ai-usagebar uses XDG-style dotfile paths on macOS just like Linux: config at `~/.config/ai-usagebar/config.toml` and cache under `~/.cache/ai-usagebar/`, not `~/Library/…`. This keeps it consistent with the `~/.claude` / `~/.codex` convention.
+
+### Install
+
+```bash
+brew install akitaonrails/tap/ai-usagebar   # prebuilt binaries (Apple Silicon + Intel)
+brew install sketchybar jq                   # sketchybar for the bar, jq for the plugin
+```
+
+Or build from source — the crate is pure Rust with a rustls/ring TLS stack (no OpenSSL, no system deps):
+
+```bash
+git clone https://github.com/akitaonrails/ai-usagebar && cd ai-usagebar
+cargo build --release
+make install PREFIX=$HOME/.local     # → ~/.local/bin (Apple Silicon Homebrew is /opt/homebrew)
+```
+
+### The `--plain` output mode
+
+SketchyBar (and xbar/SwiftBar) can't render Waybar's Pango markup. Pass `--plain` and ai-usagebar strips all markup from the `text`/`tooltip` fields, so `--json --plain` yields clean strings you can parse with `jq`. It composes with any `--format` (even ones containing `{session_bar}`):
+
+```bash
+ai-usagebar --vendor anthropic --json --plain --format '{vendor_short} {session_pct}% · {session_reset}'
+# {"text":"cld 29% · 1h 12m","tooltip":"…plain text…","class":"mid"}
+```
+
+### SketchyBar module
+
+The plugin and an example item config live in [`packaging/sketchybar/`](packaging/sketchybar/). It reads the plain JSON, maps the severity `class` (low/mid/high/critical) to a color, handles scroll-to-cycle, and opens the TUI on click.
+
+```bash
+mkdir -p ~/.config/sketchybar/plugins
+cp packaging/sketchybar/ai_usagebar.sh ~/.config/sketchybar/plugins/
+chmod +x ~/.config/sketchybar/plugins/ai_usagebar.sh
+# then merge packaging/sketchybar/sketchybarrc.example into your sketchybarrc
+sketchybar --reload
+```
+
+For instant refresh after cycling vendors or saving settings, set a `refresh_command` in `~/.config/ai-usagebar/config.toml` — the macOS analog of Waybar's `signal: 13`:
+
+```toml
+[ui]
+refresh_command = "sketchybar --trigger aibar_refresh"
+```
+
+The example `sketchybarrc` registers the `aibar_refresh` custom event, sets `update_freq=300`, subscribes to `mouse.scrolled` (scroll to cycle vendors), and opens `ai-usagebar-tui` on click. Swap the terminal in the plugin's `click_script` (`open -na Ghostty …`) for iTerm, kitty, etc.
+
+### Alternative: just the TUI
+
+The Waybar/SketchyBar widget is optional. `ai-usagebar-tui` is a fully standalone cross-platform terminal app — it runs in Terminal.app, iTerm2, Ghostty, Kitty, etc. with no bar setup at all, and shows all four vendors at once. Bind it to a hotkey (e.g. via Raycast/skhd) or just run it when you want to check usage.
 
 ## Vendor support matrix
 

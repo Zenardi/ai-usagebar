@@ -83,6 +83,12 @@ pub struct Cli {
     #[arg(long, conflicts_with = "pretty")]
     pub json: bool,
 
+    /// Strip all Pango markup from the bar text and tooltip, emitting plain
+    /// text. For non-Pango status bars (macOS SketchyBar, xbar). Composes with
+    /// `--json` (clean strings for `jq`) and with the default/`--format` output.
+    #[arg(long)]
+    pub plain: bool,
+
     /// Re-render every N seconds, clearing the screen between ticks. Implies
     /// `--pretty`. Press Ctrl-C to exit.
     #[arg(long, value_name = "SECS")]
