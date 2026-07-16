@@ -14,7 +14,7 @@ class AiUsagebar < Formula
   homepage "https://github.com/Zenardi/ai-usagebar"
   url "https://github.com/Zenardi/ai-usagebar/releases/download/v0.5.1/ai-usagebar-darwin-arm64.tar.gz"
   version "0.5.1"
-  sha256 "REPLACE_WITH_DARWIN_ARM64_SHA256"
+  sha256 "39b2ae0521d8a067800bfaa91458b749f514282a1bdc4019653dafc70fc4855c"
   license "MIT"
   depends_on :macos
   depends_on arch: :arm64
