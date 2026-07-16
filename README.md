@@ -814,18 +814,19 @@ make install PREFIX=$HOME/.local     # → ~/.local/bin (Apple Silicon Homebrew 
 
 The plugin lives at [`packaging/swiftbar/ai-usagebar.5m.sh`](packaging/swiftbar/ai-usagebar.5m.sh). It shows the active vendor's usage in the menu bar (colored by severity) and a dropdown with the full per-window breakdown plus actions: refresh, cycle vendor, and open the TUI.
 
-1. Launch **SwiftBar** once; it asks you to pick a plugin folder (e.g. `~/Library/Application Support/SwiftBar`).
-2. Drop the plugin into that folder and make it executable — matching whatever path you chose:
+After installing SwiftBar (above), set the plugin up in one go — presetting SwiftBar's plugin folder via `defaults` skips the first-launch folder prompt:
 
 ```bash
-PLUGIN_DIR="$HOME/Library/Application Support/SwiftBar"   # ← your SwiftBar plugin folder
+PLUGIN_DIR="$HOME/Library/Application Support/SwiftBar"
 mkdir -p "$PLUGIN_DIR"
 curl -fsSL https://raw.githubusercontent.com/Zenardi/ai-usagebar/main/packaging/swiftbar/ai-usagebar.5m.sh \
   -o "$PLUGIN_DIR/ai-usagebar.5m.sh"
 chmod +x "$PLUGIN_DIR/ai-usagebar.5m.sh"
+defaults write com.ameba.SwiftBar PluginDirectory "$PLUGIN_DIR"
+open -a SwiftBar
 ```
 
-3. In SwiftBar, choose **Refresh All** (or reopen the app). The item appears in the menu bar, next to the clock / Control Center.
+The item appears in the menu bar, next to the clock / Control Center. (If SwiftBar is already open, run `open -g swiftbar://refreshallplugins` — or use its **Refresh All** menu — to pick up the new plugin.)
 
 The `.5m.` in the filename is SwiftBar's refresh interval (5 minutes). Rename to change it (e.g. `.10m.`); keep it ≥ ~2 min since the Anthropic/OpenAI endpoints rate-limit aggressively below ~300s (the widget caches for 60s).
 
