@@ -9,7 +9,7 @@
 class AiUsagebar < Formula
   desc "Status-bar widget and tabbed TUI for AI plan usage (Anthropic/OpenAI/Z.AI/OpenRouter)"
   homepage "https://github.com/akitaonrails/ai-usagebar"
-  version "0.4.0"
+  version "0.5.0"
   license "MIT"
   depends_on :macos
 
