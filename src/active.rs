@@ -13,9 +13,7 @@ use crate::error::{AppError, Result};
 use crate::vendor::VendorId;
 
 fn state_dir() -> Result<PathBuf> {
-    let base = directories::BaseDirs::new()
-        .ok_or_else(|| AppError::Other("could not resolve XDG cache dir".into()))?;
-    Ok(base.cache_dir().join("ai-usagebar"))
+    Ok(crate::paths::cache_base()?.join("ai-usagebar"))
 }
 
 fn state_path() -> Result<PathBuf> {

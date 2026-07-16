@@ -12,11 +12,24 @@ pub const REFRESH_SIGNAL: &str = "-RTMIN+13";
 /// Process name used for best-effort refreshes after cycling/saving settings.
 pub const PROCESS_NAME: &str = "waybar";
 
-/// Best-effort Waybar refresh. Failing is harmless when Waybar is not running.
-pub fn request_refresh() {
-    let _ = std::process::Command::new("pkill")
-        .args([REFRESH_SIGNAL, PROCESS_NAME])
-        .status();
+/// Best-effort status-bar refresh after cycling vendors or saving settings.
+///
+/// When `command` holds a non-empty string it is run via `sh -c` — this is the
+/// macOS / SketchyBar path (`[ui] refresh_command`), e.g.
+/// `sketchybar --trigger aibar_refresh`. Otherwise it falls back to the
+/// Linux/Waybar default `pkill -RTMIN+13 waybar`. Failing either way is
+/// harmless when nothing is listening.
+pub fn request_refresh(command: Option<&str>) {
+    match command.map(str::trim).filter(|c| !c.is_empty()) {
+        Some(cmd) => {
+            let _ = std::process::Command::new("sh").args(["-c", cmd]).status();
+        }
+        None => {
+            let _ = std::process::Command::new("pkill")
+                .args([REFRESH_SIGNAL, PROCESS_NAME])
+                .status();
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -33,6 +33,29 @@ pub fn escape(s: &str) -> String {
         .replace('>', "&gt;")
 }
 
+/// Strip Pango markup to plain text: remove every `<…>` tag and unescape the
+/// entities [`escape`] produces. The inverse-ish of the renderers — used by the
+/// widget's `--plain` mode so non-Pango status bars (macOS SketchyBar, xbar, …)
+/// receive clean text instead of literal `<span …>` markup.
+///
+/// Tag scanning mirrors [`visible_width`]; entity unescaping does `&amp;` LAST
+/// so an escaped-literal `&lt;` (stored as `&amp;lt;`) round-trips correctly.
+pub fn strip_markup(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut depth = 0usize;
+    for ch in s.chars() {
+        match ch {
+            '<' => depth += 1,
+            '>' if depth > 0 => depth = depth.saturating_sub(1),
+            _ if depth == 0 => out.push(ch),
+            _ => {}
+        }
+    }
+    out.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+}
+
 /// Map a usage percentage to a severity tier, matching `color_for`
 /// (claudebar:198-205):
 ///   >= 90 → critical (red); >= 75 → high (orange);
@@ -248,5 +271,29 @@ mod tests {
     #[test]
     fn visible_width_handles_nested_tags() {
         assert_eq!(visible_width("<a><b>xy</b></a>"), 2);
+    }
+
+    #[test]
+    fn strip_markup_removes_spans_and_keeps_text() {
+        assert_eq!(
+            strip_markup("<span foreground='#ff0000'>62%</span> · 1h 30m"),
+            "62% · 1h 30m"
+        );
+        // A full progress bar strips to just its glyphs.
+        let bar = progress_bar(50, "#ff0000", &theme(), None);
+        assert_eq!(strip_markup(&bar), "██████████░░░░░░░░░░");
+    }
+
+    #[test]
+    fn strip_markup_unescapes_entities() {
+        // escape() → strip_markup() round-trips to the original text.
+        for original in ["a < b & c > d", "Max 20x", "plain", "&amp; literal"] {
+            assert_eq!(strip_markup(&escape(original)), original);
+        }
+    }
+
+    #[test]
+    fn strip_markup_plain_text_is_unchanged() {
+        assert_eq!(strip_markup("no markup here"), "no markup here");
     }
 }

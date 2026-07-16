@@ -10,6 +10,11 @@
 # is selected when the TUI opens. Comment out to default to Anthropic.
 # Valid: anthropic | openai | zai | openrouter
 # primary = "anthropic"
+#
+# Command run after cycling vendors or saving settings so the status bar
+# refreshes immediately. Unset → Linux/Waybar default (pkill -RTMIN+13 waybar).
+# On macOS with SketchyBar:
+# refresh_command = "sketchybar --trigger aibar_refresh"
 
 [anthropic]
 enabled = true
