@@ -133,6 +133,149 @@ pub fn write_back(path: &Path, new_oauth: &OauthCreds) -> Result<()> {
     atomic_write(path, &bytes)
 }
 
+/// macOS login-Keychain item that Claude Code writes its OAuth JSON into.
+#[cfg(target_os = "macos")]
+const KEYCHAIN_SERVICE: &str = "Claude Code-credentials";
+
+/// Where the Claude OAuth credentials actually live for a given run.
+///
+/// On Linux they're always in `~/.claude/.credentials.json`. On macOS, Claude
+/// Code stores them in the login Keychain instead, so when the file is absent
+/// we read/write the Keychain item — sharing the store with Claude Code exactly
+/// like the file is shared on Linux.
+#[derive(Debug, Clone)]
+pub enum CredsSource {
+    File(PathBuf),
+    #[cfg(target_os = "macos")]
+    Keychain,
+}
+
+impl CredsSource {
+    /// Resolve the source for a configured credentials path: the file when it
+    /// exists; on macOS fall back to the Keychain when the file is absent and
+    /// Claude Code has an item there; otherwise the file path (so a read yields
+    /// a "run `claude`" error pointing at the expected location).
+    pub fn for_path(path: &Path) -> Self {
+        if path.exists() {
+            return CredsSource::File(path.to_path_buf());
+        }
+        #[cfg(target_os = "macos")]
+        if keychain_present() {
+            return CredsSource::Keychain;
+        }
+        CredsSource::File(path.to_path_buf())
+    }
+
+    pub fn load(&self) -> Result<CredentialsFile> {
+        match self {
+            CredsSource::File(p) => read_from(p),
+            #[cfg(target_os = "macos")]
+            CredsSource::Keychain => read_keychain(),
+        }
+    }
+
+    /// Persist refreshed credentials back to the same store. Best-effort at the
+    /// call site (the refresh already succeeded), matching the file path.
+    pub fn save(&self, oauth: &OauthCreds) -> Result<()> {
+        match self {
+            CredsSource::File(p) => write_back(p, oauth),
+            #[cfg(target_os = "macos")]
+            CredsSource::Keychain => write_keychain(oauth),
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn keychain_present() -> bool {
+    std::process::Command::new("security")
+        .args(["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+#[cfg(target_os = "macos")]
+fn read_keychain() -> Result<CredentialsFile> {
+    let out = std::process::Command::new("security")
+        .args(["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"])
+        .output()
+        .map_err(|e| AppError::Other(format!("failed to run `security`: {e}")))?;
+    if !out.status.success() {
+        return Err(AppError::Credentials(format!(
+            "no `{KEYCHAIN_SERVICE}` item in the macOS login Keychain. Run `claude` to log in."
+        )));
+    }
+    let raw = String::from_utf8_lossy(&out.stdout);
+    serde_json::from_str(raw.trim()).map_err(|e| {
+        AppError::Credentials(format!(
+            "could not parse the Keychain `{KEYCHAIN_SERVICE}` value: {e}. Run `claude` to re-authenticate."
+        ))
+    })
+}
+
+/// Update the Keychain item's stored JSON in place (`security -U`), merging our
+/// refreshed `claudeAiOauth` into whatever is stored so we don't drop any
+/// unknown top-level fields Claude Code may keep there.
+#[cfg(target_os = "macos")]
+fn write_keychain(new_oauth: &OauthCreds) -> Result<()> {
+    let mut doc: serde_json::Value = std::process::Command::new("security")
+        .args(["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| serde_json::from_slice(&o.stdout).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+    if !doc.is_object() {
+        doc = serde_json::json!({});
+    }
+    doc.as_object_mut().expect("object").insert(
+        "claudeAiOauth".into(),
+        serde_json::to_value(new_oauth).map_err(AppError::Json)?,
+    );
+    let json = serde_json::to_string(&doc).map_err(AppError::Json)?;
+
+    // `-U` updates the existing item in place (verified: no duplicate). `-a`
+    // must match the stored account, so read it back rather than assume.
+    let account = keychain_account().unwrap_or_default();
+    let status = std::process::Command::new("security")
+        .args([
+            "add-generic-password",
+            "-U",
+            "-a",
+            &account,
+            "-s",
+            KEYCHAIN_SERVICE,
+            "-w",
+            &json,
+        ])
+        .status()
+        .map_err(|e| AppError::Other(format!("failed to run `security`: {e}")))?;
+    if !status.success() {
+        return Err(AppError::Other("`security` failed to update Keychain".into()));
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn keychain_account() -> Option<String> {
+    let out = std::process::Command::new("security")
+        .args(["find-generic-password", "-s", KEYCHAIN_SERVICE])
+        .output()
+        .ok()?;
+    parse_account(&String::from_utf8_lossy(&out.stdout))
+}
+
+/// Parse the `"acct"<blob>="…"` attribute line from `security find-generic-password`.
+#[cfg(target_os = "macos")]
+fn parse_account(security_output: &str) -> Option<String> {
+    security_output.lines().find_map(|line| {
+        line.trim()
+            .strip_prefix("\"acct\"<blob>=\"")
+            .and_then(|rest| rest.strip_suffix('"'))
+            .map(str::to_string)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -244,5 +387,26 @@ mod tests {
         assert_eq!(v["someOtherField"], "keep me");
         assert_eq!(v["claudeAiOauth"]["accessToken"], "NEW");
         assert_eq!(v["claudeAiOauth"]["expiresAt"], 1234);
+    }
+
+    #[test]
+    fn for_path_uses_file_when_present() {
+        let f = write_creds(
+            r#"{"claudeAiOauth":{"accessToken":"A","refreshToken":"R","expiresAt":0,
+                "subscriptionType":"pro","rateLimitTier":""}}"#,
+        );
+        match CredsSource::for_path(f.path()) {
+            CredsSource::File(p) => assert_eq!(p.as_path(), f.path()),
+            #[cfg(target_os = "macos")]
+            CredsSource::Keychain => panic!("should prefer the file when it exists"),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn parse_account_extracts_acct_blob() {
+        let sample = "class: \"genp\"\nattributes:\n    \"acct\"<blob>=\"zenardi\"\n    \"svce\"<blob>=\"Claude Code-credentials\"\n";
+        assert_eq!(super::parse_account(sample).as_deref(), Some("zenardi"));
+        assert_eq!(super::parse_account("no account line here"), None);
     }
 }

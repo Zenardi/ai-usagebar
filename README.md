@@ -58,7 +58,7 @@ Each vendor authenticates a little differently. Anthropic and OpenAI use OAuth c
 
 | Vendor | Method | Action required |
 |---|---|---|
-| Anthropic | OAuth, read from `~/.claude/.credentials.json` | Run `claude` once to log in. Token auto-refreshes. |
+| Anthropic | OAuth. Linux: `~/.claude/.credentials.json`. macOS: the login **Keychain** (`Claude Code-credentials`, read via `security`). | Run `claude` once to log in. Token auto-refreshes. |
 | OpenAI | OAuth, read from `~/.codex/auth.json` | Run `codex login` once. Token auto-refreshes. |
 | Z.AI | API key (`ZAI_API_KEY` env or `[zai] api_key` in config) | Set either. |
 | OpenRouter | API key (`OPENROUTER_API_KEY` env or `[openrouter] api_key` in config) | Set either. |
@@ -780,7 +780,12 @@ Swap `ptyxis` for `gnome-terminal`, `kgx`, `kitty`, `foot`, etc. as needed.
 
 macOS has no Waybar. To get ai-usagebar into the **native menu bar** (up by the clock), use [SwiftBar](https://github.com/swiftbar/SwiftBar) — a tiny menu-bar host app that runs a script and renders its output as a real menu-bar item with a click-dropdown. The plugin just calls the `ai-usagebar` binary, so everything works the same underneath: same binaries, same undocumented endpoints, same cache. If you don't want a menu-bar item at all, skip straight to the standalone TUI below.
 
-Authentication is identical to Linux: the `claude` and `codex` CLIs write their OAuth credentials to `~/.claude/.credentials.json` and `~/.codex/auth.json` on macOS too, so **no env vars are needed** for Anthropic/OpenAI. Z.AI and OpenRouter still use API keys (env var or inline in config).
+Authentication needs **no env vars** for Anthropic/OpenAI — ai-usagebar reads what the official CLIs already stored:
+
+- **Anthropic:** on macOS, Claude Code keeps its OAuth token in the **login Keychain** (item `Claude Code-credentials`), not in a file. ai-usagebar reads it automatically via `security` (and writes refreshed tokens back to the same item, so it stays in sync with Claude Code — exactly how it shares `~/.claude/.credentials.json` on Linux). Just run `claude` once to log in. If you point `[anthropic] credentials_path` at a file, that file wins.
+- **OpenAI:** run `codex login` once — Codex writes `~/.codex/auth.json` on macOS as on Linux.
+
+Z.AI and OpenRouter still use API keys (env var or inline in config).
 
 > **Paths on macOS.** ai-usagebar uses XDG-style dotfile paths on macOS just like Linux: config at `~/.config/ai-usagebar/config.toml` and cache under `~/.cache/ai-usagebar/`, not `~/Library/…`. This keeps it consistent with the `~/.claude` / `~/.codex` convention.
 

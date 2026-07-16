@@ -64,8 +64,11 @@ pub async fn fetch_snapshot(
     let _lock = acquire_lock(&cache.lock_path(), LOCK_TIMEOUT)?;
 
     // Fast path: cache is fresh, no work needed. We still need creds for the
-    // plan label though, so read them either way.
-    let mut creds = creds::read_from(creds_path)?;
+    // plan label though, so read them either way. On macOS the file may be
+    // absent because Claude Code stores creds in the Keychain — `for_path`
+    // transparently falls back to it.
+    let source = creds::CredsSource::for_path(creds_path);
+    let mut creds = source.load()?;
     let plan_label = creds.claude_ai_oauth.plan_label();
 
     if let Some(bytes) = cache.fresh_payload(cache_ttl)? {
@@ -94,9 +97,10 @@ pub async fn fetch_snapshot(
                 }
                 creds.claude_ai_oauth.expires_at_ms =
                     Utc::now().timestamp_millis() + (rr.expires_in as i64) * 1000;
-                // Best-effort persist; the refresh worked, so callers should
-                // still see fresh data even if writing the cred file failed.
-                let _ = creds::write_back(creds_path, &creds.claude_ai_oauth);
+                // Best-effort persist to the same store (file or Keychain); the
+                // refresh worked, so callers still see fresh data even if the
+                // write fails.
+                let _ = source.save(&creds.claude_ai_oauth);
             }
             Ok(Err(AppError::Http { status, body })) => {
                 auth_ok = false;
