@@ -9,7 +9,18 @@ Each release is also published at
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **macOS: one-shot SwiftBar installer** (`packaging/swiftbar/install-macos.sh`).
+  Installs the plugin, registers SwiftBar as a login item so the menu-bar item
+  **auto-starts at login**, and drops a tiny `ai-usagebar.app` launcher in
+  `/Applications` so Spotlight finds it by name. Idempotent; safe to re-run.
+  (SwiftBar itself isn't renamed — it's a shared, code-signed host that Homebrew
+  updates; the launcher is the brand-safe way to get an "ai-usagebar" entry.)
+- **macOS: branded launcher icon** — the `ai-usagebar.app` launcher ships a
+  gauge `.icns` (`packaging/swiftbar/ai-usagebar.icns`) so Finder/Spotlight/Dock
+  show the usage-gauge motif instead of a generic app icon. Regenerable with
+  `packaging/swiftbar/make-icon.py` (Pillow → `iconutil`).
 
 ## [0.5.1] — 2026-07-16
 

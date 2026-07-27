@@ -1,3 +1,5 @@
+<img src="assets/icon.png" alt="ai-usagebar app icon" width="120" align="center">
+
 # ai-usagebar
 
 Waybar widget and tabbed TUI for AI plan usage across **Anthropic Claude**, **OpenAI Codex/ChatGPT**, **Z.AI (GLM)**, and **OpenRouter**.
@@ -819,7 +821,19 @@ make install PREFIX=$HOME/.local     # → ~/.local/bin (Apple Silicon Homebrew 
 
 The plugin lives at [`packaging/swiftbar/ai-usagebar.5m.sh`](packaging/swiftbar/ai-usagebar.5m.sh). It shows the active vendor's usage in the menu bar (colored by severity) and a dropdown with the full per-window breakdown plus actions: refresh, cycle vendor, and open the TUI.
 
-After installing SwiftBar (above), set the plugin up in one go — presetting SwiftBar's plugin folder via `defaults` skips the first-launch folder prompt:
+After installing SwiftBar (above), run the one-shot installer. It drops in the plugin, enables **autostart at login**, and adds a Spotlight-branded launcher (so searching "ai-usagebar" finds it — SwiftBar is a shared host and keeps its own name). It's idempotent, so it's safe to re-run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Zenardi/ai-usagebar/main/packaging/swiftbar/install-macos.sh | bash
+# …or from a clone:  ./packaging/swiftbar/install-macos.sh
+```
+
+The item appears in the menu bar, next to the clock / Control Center.
+
+<details>
+<summary>Or set it up by hand</summary>
+
+Presetting SwiftBar's plugin folder via `defaults` skips the first-launch folder prompt:
 
 ```bash
 PLUGIN_DIR="$HOME/Library/Application Support/SwiftBar"
@@ -831,7 +845,18 @@ defaults write com.ameba.SwiftBar PluginDirectory "$PLUGIN_DIR"
 open -a SwiftBar
 ```
 
-The item appears in the menu bar, next to the clock / Control Center. (If SwiftBar is already open, run `open -g swiftbar://refreshallplugins` — or use its **Refresh All** menu — to pick up the new plugin.)
+(If SwiftBar is already open, run `open -g swiftbar://refreshallplugins` — or use its **Refresh All** menu — to pick up the new plugin.)
+</details>
+
+### Autostart, and the app name in Spotlight
+
+The installer registers **SwiftBar** as a macOS login item (**System Settings → General → Login Items**), so the menu-bar item comes back automatically on every startup — no terminal, no manual open. To turn it off:
+
+```bash
+osascript -e 'tell application "System Events" to delete login item "SwiftBar"'
+```
+
+**Why not just rename SwiftBar to "ai-usagebar"?** SwiftBar is a third-party, code-signed app that Homebrew installs and updates, and it's a *shared* plugin host — renaming its bundle would break its code signature and get clobbered by the next `brew upgrade`. Instead, the installer drops a tiny `ai-usagebar.app` in `/Applications` — with its own gauge icon — that just launches + refreshes SwiftBar, so **Spotlight finds "ai-usagebar" by name**. It's built locally (no Gatekeeper prompt) and survives upgrades. Remove it any time with `rm -rf /Applications/ai-usagebar.app`. (The icon is `packaging/swiftbar/ai-usagebar.icns`, regenerable via `make-icon.py`.)
 
 The `.5m.` in the filename is SwiftBar's refresh interval (5 minutes). Rename to change it (e.g. `.10m.`); keep it ≥ ~2 min since the Anthropic/OpenAI endpoints rate-limit aggressively below ~300s (the widget caches for 60s).
 
